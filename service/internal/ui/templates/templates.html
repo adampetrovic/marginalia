@@ -1,0 +1,41 @@
+{{define "content"}}
+<h1>Templates</h1>
+
+<div class="actions">
+  <a href="/ui/templates/new" class="btn btn-primary">+ New Template</a>
+</div>
+
+<h2>Custom Templates</h2>
+<div class="card">
+  {{if .Templates}}
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Default</th><th>Updated</th><th></th></tr></thead>
+    <tbody>
+    {{range .Templates}}
+      <tr>
+        <td><a href="/ui/templates/{{.ID}}">{{.Name}}</a></td>
+        <td><span class="badge badge-{{.Type}}">{{.Type}}</span></td>
+        <td>{{if .IsDefault}}✓{{end}}</td>
+        <td>{{fmtTime .UpdatedAt}}</td>
+        <td><a href="/ui/templates/{{.ID}}" class="btn btn-outline btn-sm">Edit</a></td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <div class="empty">No custom templates. Using built-in defaults.</div>
+  {{end}}
+</div>
+
+<h2>Built-in Defaults</h2>
+<div class="grid-2">
+  <div class="card">
+    <h2>Book Template</h2>
+    <div class="preview-pane has-content">{{.DefaultBookTemplate}}</div>
+  </div>
+  <div class="card">
+    <h2>Article Template</h2>
+    <div class="preview-pane has-content">{{.DefaultArticleTemplate}}</div>
+  </div>
+</div>
+{{end}}

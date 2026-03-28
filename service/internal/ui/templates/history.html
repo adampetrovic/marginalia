@@ -1,0 +1,49 @@
+{{define "content"}}
+<h1>Sync History</h1>
+
+<div class="actions">
+  <button class="btn btn-primary"
+          hx-post="/ui/sync"
+          hx-target="#sync-result"
+          hx-indicator="#sync-spinner"
+          hx-disabled-elt="this"
+          hx-on::after-request="setTimeout(()=>location.reload(), 1000)">
+    ↻ Sync Now
+  </button>
+  <span id="sync-spinner" class="htmx-indicator" style="color: var(--muted); font-size: 0.85rem;">syncing…</span>
+</div>
+<div id="sync-result"></div>
+
+<div class="card">
+  {{if .Logs}}
+  <table>
+    <thead>
+      <tr>
+        <th>Source</th>
+        <th>Status</th>
+        <th>Documents</th>
+        <th>Highlights</th>
+        <th>Started</th>
+        <th>Duration</th>
+        <th>Error</th>
+      </tr>
+    </thead>
+    <tbody>
+    {{range .Logs}}
+      <tr>
+        <td>{{.SourceID}}</td>
+        <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+        <td>{{.DocumentsSynced}}</td>
+        <td>{{.HighlightsSynced}}</td>
+        <td>{{fmtTime .StartedAt}}</td>
+        <td>{{if .CompletedAt}}{{fmtTimePtr .CompletedAt}}{{else}}—{{end}}</td>
+        <td style="color: var(--error); font-size: 0.8rem;">{{if .Error}}{{.Error}}{{end}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <div class="empty">No sync history yet.</div>
+  {{end}}
+</div>
+{{end}}

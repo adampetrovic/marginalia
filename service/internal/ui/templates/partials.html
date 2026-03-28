@@ -1,0 +1,25 @@
+{{define "sync-success"}}
+<div class="success-msg" style="margin-bottom: 1rem;">
+  ✓ Sync completed{{range $source, $result := .}} — {{$source}}: {{$result.Documents}} docs, {{$result.Highlights}} highlights{{end}}
+</div>
+{{end}}
+
+{{define "sync-error"}}
+<div class="error-msg" style="margin-bottom: 1rem;">✗ Sync failed: {{.}}</div>
+{{end}}
+
+{{define "validation-ok"}}
+<div class="success-msg">✓ Template is valid</div>
+{{end}}
+
+{{define "validation-error"}}
+<div class="error-msg">✗ {{.}}</div>
+{{end}}
+
+{{define "preview-result"}}
+<div class="preview-pane has-content">{{.}}</div>
+{{end}}
+
+{{define "preview-error"}}
+<div class="preview-pane"><span style="color: var(--error);">Error: {{.}}</span></div>
+{{end}}
