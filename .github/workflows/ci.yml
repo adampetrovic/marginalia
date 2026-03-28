@@ -57,7 +57,7 @@ jobs:
 
       - name: Build binary
         working-directory: service
-        run: CGO_ENABLED=0 go build -o /dev/null ./cmd/marginalia
+        run: CGO_ENABLED=1 go build -o /dev/null ./cmd/marginalia
 
   logseq-plugin-test:
     name: Logseq Plugin Tests
@@ -99,3 +99,27 @@ jobs:
           tags: ghcr.io/${{ github.repository }}:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  e2e-test:
+    name: E2E Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start services
+        working-directory: e2e
+        run: docker compose -f docker-compose.test.yml up -d --build
+
+      - name: Run e2e tests
+        working-directory: e2e
+        run: ./run-e2e.sh
+
+      - name: Service logs
+        if: failure()
+        working-directory: e2e
+        run: docker compose -f docker-compose.test.yml logs
+
+      - name: Stop services
+        if: always()
+        working-directory: e2e
+        run: docker compose -f docker-compose.test.yml down -v
