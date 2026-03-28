@@ -6,11 +6,11 @@
     <div>
       <div class="form-group">
         <label for="name">Name</label>
-        <input type="text" id="name" name="name" value="{{.Template.Name}}" style="width: 100%;" required>
+        <input type="text" id="name" name="name" value="{{.Template.Name}}" required>
       </div>
       <div class="form-group">
         <label for="type">Document Type</label>
-        <select id="type" name="type" style="width: 100%;">
+        <select id="type" name="type">
           <option value="book" {{if eq .Template.Type "book"}}selected{{end}}>Book</option>
           <option value="article" {{if eq .Template.Type "article"}}selected{{end}}>Article</option>
           <option value="podcast" {{if eq .Template.Type "podcast"}}selected{{end}}>Podcast</option>
@@ -25,7 +25,7 @@
       </div>
       <div class="form-group">
         <label for="page_template">Page Template (Jinja2 / pongo2 syntax)</label>
-        <textarea id="page_template" name="page_template" rows="18">{{.Template.PageTemplate}}</textarea>
+        <textarea id="page_template" name="page_template" rows="16">{{.Template.PageTemplate}}</textarea>
       </div>
       <div class="actions">
         <button type="submit" class="btn btn-primary">{{if .IsNew}}Create{{else}}Save{{end}}</button>
@@ -52,31 +52,33 @@
       <div id="preview-output" class="preview-pane">Click "Preview" to render with sample data.</div>
 
       <h2 style="margin-top: 1rem;">Available Variables</h2>
-      <div class="card" style="font-size: 0.8rem; max-height: 400px; overflow-y: auto;">
-        <table>
-          <thead><tr><th>Variable</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>title</code></td><td>Document title</td></tr>
-            <tr><td><code>author</code></td><td>Author name</td></tr>
-            <tr><td><code>category</code></td><td>Document type</td></tr>
-            <tr><td><code>url</code></td><td>Source URL</td></tr>
-            <tr><td><code>source</code></td><td>Source name</td></tr>
-            <tr><td><code>image_url</code></td><td>Cover image</td></tr>
-            <tr><td><code>tags</code></td><td>Array of tags</td></tr>
-            <tr><td><code>num_highlights</code></td><td>Highlight count</td></tr>
-            <tr><td><code>last_highlighted_at</code></td><td>Last highlight date</td></tr>
-            <tr><td><code>created_at</code></td><td>First synced</td></tr>
-            <tr><td><code>highlights</code></td><td>Array of highlights</td></tr>
-            <tr><td colspan="2" style="color: var(--muted); padding-top: 0.5rem;"><strong>Highlight variables</strong></td></tr>
-            <tr><td><code>highlight.text</code></td><td>Highlighted text</td></tr>
-            <tr><td><code>highlight.note</code></td><td>User annotation</td></tr>
-            <tr><td><code>highlight.color</code></td><td>Highlight color</td></tr>
-            <tr><td><code>highlight.chapter</code></td><td>Chapter title</td></tr>
-            <tr><td><code>highlight.page_number</code></td><td>Page number</td></tr>
-            <tr><td><code>highlight.location</code></td><td>Raw location</td></tr>
-            <tr><td><code>highlight.highlighted_at</code></td><td>When highlighted</td></tr>
-          </tbody>
-        </table>
+      <div class="card" style="font-size: 0.8rem; max-height: 350px; overflow-y: auto;">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Variable</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>title</code></td><td>Document title</td></tr>
+              <tr><td><code>author</code></td><td>Author name</td></tr>
+              <tr><td><code>category</code></td><td>Document type</td></tr>
+              <tr><td><code>url</code></td><td>Source URL</td></tr>
+              <tr><td><code>source</code></td><td>Source name</td></tr>
+              <tr><td><code>image_url</code></td><td>Cover image</td></tr>
+              <tr><td><code>tags</code></td><td>Array of tags</td></tr>
+              <tr><td><code>num_highlights</code></td><td>Highlight count</td></tr>
+              <tr><td><code>last_highlighted_at</code></td><td>Last highlight date</td></tr>
+              <tr><td><code>created_at</code></td><td>First synced</td></tr>
+              <tr><td><code>highlights</code></td><td>Array of highlights</td></tr>
+              <tr><td colspan="2" style="color: var(--muted); padding-top: 0.5rem;"><strong>Highlight variables</strong></td></tr>
+              <tr><td><code>highlight.text</code></td><td>Highlighted text</td></tr>
+              <tr><td><code>highlight.note</code></td><td>User annotation</td></tr>
+              <tr><td><code>highlight.color</code></td><td>Highlight color</td></tr>
+              <tr><td><code>highlight.chapter</code></td><td>Chapter title</td></tr>
+              <tr><td><code>highlight.page_number</code></td><td>Page number</td></tr>
+              <tr><td><code>highlight.location</code></td><td>Raw location</td></tr>
+              <tr><td><code>highlight.highlighted_at</code></td><td>When highlighted</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>

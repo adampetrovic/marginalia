@@ -16,32 +16,34 @@
 
 <div class="card">
   {{if .Logs}}
-  <table>
-    <thead>
-      <tr>
-        <th>Source</th>
-        <th>Status</th>
-        <th>Documents</th>
-        <th>Highlights</th>
-        <th>Started</th>
-        <th>Duration</th>
-        <th>Error</th>
-      </tr>
-    </thead>
-    <tbody>
-    {{range .Logs}}
-      <tr>
-        <td>{{.SourceID}}</td>
-        <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
-        <td>{{.DocumentsSynced}}</td>
-        <td>{{.HighlightsSynced}}</td>
-        <td>{{fmtTime .StartedAt}}</td>
-        <td>{{if .CompletedAt}}{{fmtTimePtr .CompletedAt}}{{else}}—{{end}}</td>
-        <td style="color: var(--error); font-size: 0.8rem;">{{if .Error}}{{.Error}}{{end}}</td>
-      </tr>
-    {{end}}
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Source</th>
+          <th>Status</th>
+          <th>Docs</th>
+          <th>Highlights</th>
+          <th>Started</th>
+          <th>Completed</th>
+          <th>Error</th>
+        </tr>
+      </thead>
+      <tbody>
+      {{range .Logs}}
+        <tr>
+          <td>{{.SourceID}}</td>
+          <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+          <td>{{.DocumentsSynced}}</td>
+          <td>{{.HighlightsSynced}}</td>
+          <td style="white-space: nowrap;">{{fmtTime .StartedAt}}</td>
+          <td style="white-space: nowrap;">{{fmtTimePtr .CompletedAt}}</td>
+          <td style="color: var(--error); font-size: 0.8rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis;">{{if .Error}}{{.Error}}{{end}}</td>
+        </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
   {{else}}
   <div class="empty">No sync history yet.</div>
   {{end}}
