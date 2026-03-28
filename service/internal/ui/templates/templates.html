@@ -8,20 +8,22 @@
 <h2>Custom Templates</h2>
 <div class="card">
   {{if .Templates}}
-  <table>
-    <thead><tr><th>Name</th><th>Type</th><th>Default</th><th>Updated</th><th></th></tr></thead>
-    <tbody>
-    {{range .Templates}}
-      <tr>
-        <td><a href="/ui/templates/{{.ID}}">{{.Name}}</a></td>
-        <td><span class="badge badge-{{.Type}}">{{.Type}}</span></td>
-        <td>{{if .IsDefault}}✓{{end}}</td>
-        <td>{{fmtTime .UpdatedAt}}</td>
-        <td><a href="/ui/templates/{{.ID}}" class="btn btn-outline btn-sm">Edit</a></td>
-      </tr>
-    {{end}}
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Type</th><th>Default</th><th>Updated</th><th></th></tr></thead>
+      <tbody>
+      {{range .Templates}}
+        <tr>
+          <td><a href="/ui/templates/{{.ID}}">{{.Name}}</a></td>
+          <td><span class="badge badge-{{.Type}}">{{.Type}}</span></td>
+          <td>{{if .IsDefault}}✓{{end}}</td>
+          <td style="white-space: nowrap;">{{fmtTime .UpdatedAt}}</td>
+          <td><a href="/ui/templates/{{.ID}}" class="btn btn-outline btn-sm">Edit</a></td>
+        </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
   {{else}}
   <div class="empty">No custom templates. Using built-in defaults.</div>
   {{end}}
