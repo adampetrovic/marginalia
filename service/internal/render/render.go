@@ -26,7 +26,6 @@ source:: {{ source }}
 {% if highlight.note %}		- **Note:** {{ highlight.note }}
 {% endif %}{% if highlight.color %}		- color:: {{ highlight.color }}
 {% endif %}{% if highlight.chapter or highlight.page_number %}		- location::{% if highlight.chapter %} {{ highlight.chapter }}{% endif %}{% if highlight.page_number %} (p. {{ highlight.page_number }}){% endif %}
-{% endif %}{% if highlight.highlighted_at %}		- date:: {{ highlight.highlighted_at }}
 {% endif %}{% endfor %}`
 
 // DefaultArticlePageTemplate is the built-in template for article documents.
@@ -42,7 +41,6 @@ url:: {{ url }}
 {% for highlight in highlights %}
 	- > {{ highlight.text }}
 {% if highlight.note %}		- **Note:** {{ highlight.note }}
-{% endif %}{% if highlight.highlighted_at %}		- date:: {{ highlight.highlighted_at }}
 {% endif %}{% endfor %}`
 
 // ExportedDocument is the result of rendering a document through its template.
