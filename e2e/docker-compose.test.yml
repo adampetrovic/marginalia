@@ -1,0 +1,27 @@
+services:
+  mock-readeck:
+    build:
+      context: ./mock-readeck
+      dockerfile: Dockerfile
+    ports:
+      - "9090:9090"
+
+  marginalia:
+    build:
+      context: ../service
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: /data/marginalia.db
+      MARGINALIA_API_TOKEN: test-token-e2e
+      MARGINALIA_READECK_URL: http://mock-readeck:9090
+      MARGINALIA_READECK_TOKEN: mock-readeck-token
+      MARGINALIA_PORT: "8080"
+    volumes:
+      - marginalia-data:/data
+    depends_on:
+      - mock-readeck
+
+volumes:
+  marginalia-data:
