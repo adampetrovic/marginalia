@@ -469,6 +469,77 @@ After the upstream PR is merged, users can switch back to the stock KOReader rea
 
 ---
 
+## Testing Strategy
+
+### Service (Go)
+
+**Unit tests** — test individual packages in isolation with mocked dependencies:
+- `internal/models/` — GORM model validation, JSON field serialization
+- `internal/render/` — template rendering with pongo2 (various template inputs, edge cases, missing fields)
+- `internal/sync/readeck/` — Readeck API response parsing, highlight extraction, dedup logic (HTTP responses mocked via `httptest`)
+- `internal/sync/koreader/` — Readwise-format payload parsing, document creation from push data
+- `internal/config/` — env var parsing, defaults, validation
+
+**Integration tests** — test packages against real dependencies (SQLite in-memory):
+- `internal/api/` — full HTTP handler tests using `httptest.Server` with a real SQLite database
+  - Auth middleware (valid token, missing token, wrong token)
+  - CRUD for documents, highlights, templates
+  - Sync trigger and status endpoints
+  - Export rendering end-to-end (create template → create document with highlights → call export → verify rendered markdown)
+  - Readwise-compatible ingestion endpoint (POST highlights in KOReader format → verify stored correctly)
+- Database migration tests — goose migrations apply cleanly on fresh SQLite and PostgreSQL
+
+**End-to-end tests** — docker-compose based, run in CI:
+- `docker-compose.test.yml` spins up:
+  - Marginalia service
+  - Mock Readeck server (lightweight Go HTTP server returning fixture data)
+- Test script:
+  1. Verify health endpoint
+  2. Trigger Readeck sync → verify documents and highlights created
+  3. Push KOReader highlights → verify stored
+  4. Call export API → verify rendered markdown matches expected output
+  5. Update template → re-export → verify output changed
+  6. Repeat sync → verify dedup (no duplicate highlights)
+
+### Logseq Plugin (TypeScript)
+
+**Unit tests** (vitest):
+- `api.ts` — API client with mocked fetch (sync, export, error handling)
+- `sync.ts` — sync logic (incremental timestamp tracking, checksum comparison)
+- `writer.ts` — page creation, filename sanitization, merge logic (new page, existing page with new highlights, preserving user-added content)
+
+### KOReader Plugin (Lua)
+
+- Manual testing on Kindle hardware
+- Verify highlights arrive at Marginalia with correct metadata
+
+### CI Pipeline
+
+```
+on: [push, pull_request]
+
+jobs:
+  service-test:
+    - go test ./... -race -coverprofile=coverage.out
+    - Upload coverage
+
+  service-lint:
+    - golangci-lint run
+
+  service-e2e:
+    - docker compose -f docker-compose.test.yml up -d
+    - Run e2e test script
+    - docker compose down
+
+  logseq-plugin-test:
+    - npm ci && npm test
+
+  docker-build:
+    - Build and push image (on tag only)
+```
+
+---
+
 ## Repository Structure
 
 ```

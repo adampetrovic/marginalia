@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  service-test:
+    name: Service Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: service/go.mod
+          cache-dependency-path: service/go.sum
+
+      - name: Run tests
+        working-directory: service
+        run: go test ./... -race -coverprofile=coverage.out -count=1
+
+      - name: Upload coverage
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-coverage
+          path: service/coverage.out
+
+  service-lint:
+    name: Service Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: service/go.mod
+          cache-dependency-path: service/go.sum
+
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          working-directory: service
+
+  service-build:
+    name: Service Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: service/go.mod
+          cache-dependency-path: service/go.sum
+
+      - name: Build binary
+        working-directory: service
+        run: CGO_ENABLED=0 go build -o /dev/null ./cmd/marginalia
+
+  logseq-plugin-test:
+    name: Logseq Plugin Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: logseq-plugin/package-lock.json
+
+      - name: Install dependencies
+        working-directory: logseq-plugin
+        run: npm ci
+
+      - name: Run tests
+        working-directory: logseq-plugin
+        run: npx vitest run
+
+      - name: Build
+        working-directory: logseq-plugin
+        run: npx vite build
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: service
+          push: false
+          tags: ghcr.io/${{ github.repository }}:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
