@@ -54,6 +54,9 @@ func (s *Server) buildRouter() chi.Router {
 	// Health check (unauthenticated)
 	r.Get("/healthz", s.handleHealthz)
 
+	// Web UI (authenticated)
+	s.registerUIRoutes(r)
+
 	// Authenticated API routes
 	r.Route("/api", func(r chi.Router) {
 		r.Use(s.authMiddleware)
@@ -91,23 +94,60 @@ func (s *Server) buildRouter() chi.Router {
 }
 
 // authMiddleware validates the bearer token.
+// Supports: Authorization header (Bearer/Token), query param (?token=), or cookie.
 func (s *Server) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := r.Header.Get("Authorization")
-		if token == "" {
-			writeError(w, http.StatusUnauthorized, "missing authorization header")
-			return
-		}
+		token := ""
 
-		// Support both "Bearer <token>" and "Token <token>" (KOReader uses Token)
-		for _, prefix := range []string{"Bearer ", "Token "} {
-			if len(token) > len(prefix) && token[:len(prefix)] == prefix {
-				token = token[len(prefix):]
-				break
+		// 1. Authorization header (API clients, KOReader)
+		if auth := r.Header.Get("Authorization"); auth != "" {
+			token = auth
+			for _, prefix := range []string{"Bearer ", "Token "} {
+				if len(token) > len(prefix) && token[:len(prefix)] == prefix {
+					token = token[len(prefix):]
+					break
+				}
 			}
 		}
 
-		if token != s.cfg.APIToken {
+		// 2. Cookie (web UI sessions)
+		if token == "" {
+			if c, err := r.Cookie("marginalia_token"); err == nil {
+				token = c.Value
+			}
+		}
+
+		// 3. Query param (web UI initial login, sets cookie)
+		if token == "" {
+			token = r.URL.Query().Get("token")
+			if token == s.cfg.APIToken {
+				http.SetCookie(w, &http.Cookie{
+					Name:     "marginalia_token",
+					Value:    token,
+					Path:     "/",
+					HttpOnly: true,
+					SameSite: http.SameSiteLaxMode,
+					MaxAge:   86400 * 30, // 30 days
+				})
+				// Redirect to strip token from URL
+				clean := *r.URL
+				q := clean.Query()
+				q.Del("token")
+				clean.RawQuery = q.Encode()
+				http.Redirect(w, r, clean.String(), http.StatusFound)
+				return
+			}
+		}
+
+		if token == "" || token != s.cfg.APIToken {
+			// For UI routes, show a simple message instead of JSON
+			if len(r.URL.Path) >= 3 && r.URL.Path[:3] == "/ui" {
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = fmt.Fprintf(w, `<html><body style="font-family: sans-serif; padding: 2rem; background: #0f1117; color: #e4e4e7;">
+					<h2>Marginalia</h2><p>Append <code>?token=YOUR_API_TOKEN</code> to the URL to log in.</p></body></html>`)
+				return
+			}
 			writeError(w, http.StatusUnauthorized, "invalid token")
 			return
 		}

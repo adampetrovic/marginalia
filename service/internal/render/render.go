@@ -151,6 +151,15 @@ func GetDefaultTemplate(docType string) models.Template {
 	}
 }
 
+// ValidateTemplate checks if a template string has valid pongo2 syntax.
+func ValidateTemplate(templateStr string) error {
+	_, err := pongo2.FromString(templateStr)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	return nil
+}
+
 func formatTime(t *time.Time) string {
 	if t == nil {
 		return ""
