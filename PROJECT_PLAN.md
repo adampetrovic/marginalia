@@ -446,19 +446,34 @@ After the upstream PR is merged, users can switch back to the stock KOReader rea
 
 **Deliverables:** Working Logseq plugin, Readeck article highlights syncing into Logseq graph.
 
-### Phase 3: KOReader Integration
+### Phase 3: End-to-End Integration Tests
+**Goal:** Docker-based e2e test suite covering the full sync pipeline, running in CI.
+
+1. **Mock Readeck server** — lightweight Go HTTP server returning fixture bookmarks + annotations
+2. **`docker-compose.test.yml`** — spins up Marginalia service + mock Readeck
+3. **E2e test script** — sequential test steps:
+   - Verify health endpoint
+   - Trigger Readeck sync → verify documents and highlights created
+   - Push KOReader highlights via `POST /api/v2/highlights` → verify stored
+   - Call export API → verify rendered markdown matches expected output
+   - Update template → re-export → verify output changed
+   - Repeat sync → verify dedup (no duplicate highlights)
+4. **CI `service-e2e` job** — add to GitHub Actions workflow, runs on push/PR
+
+**Deliverables:** `docker-compose.test.yml`, mock Readeck server, e2e test script, CI job.
+
+### Phase 4: KOReader Integration — Hardware Testing
 **Goal:** Book highlights flow wirelessly from Kindle to Logseq.
 
-1. **Readwise-compatible API** — implement `POST /api/v2/highlights` and `GET /api/v2/auth` in Marginalia
-2. **Fork readwise.lua** — add `self.settings.url` menu item, replace hardcoded URL (~10 lines changed)
-3. **Install on Kindle** — one-time USB copy to replace `target/readwise.lua`
-4. **Test end-to-end** — export highlights from KOReader over WiFi → verify in Marginalia → sync to Logseq
-5. **Book deduplication** — handle same book exported multiple times (merge by title+author)
-6. **Upstream PR** — submit PR to `koreader/koreader` to make URL configurable in the official exporter
+_Note: The Readwise-compatible API (`POST /api/v2/highlights`, `GET /api/v2/auth`), KOReader ingestion logic, deduplication, and the forked `readwise.lua` were all implemented in Phase 1. This phase is hardware validation only._
+
+1. **Install on Kindle** — one-time USB copy to replace `target/readwise.lua`
+2. **Test end-to-end** — export highlights from KOReader over WiFi → verify in Marginalia → sync to Logseq
+3. **Validate deduplication** — re-export same book, confirm no duplicate highlights
 
 **Deliverables:** KOReader highlights flowing to Marginalia → Logseq without plugging in the Kindle.
 
-### Phase 4: Polish & Template Refinement
+### Phase 5: Polish & Template Refinement
 **Goal:** Feature parity with Readwise's template system.
 
 1. **Web UI for templates** — embedded page to edit/preview templates (templ + htmx, single binary)
@@ -466,6 +481,13 @@ After the upstream PR is merged, users can switch back to the stock KOReader rea
 3. **Template validation** — syntax checking, error messages on save
 4. **Bulk re-render** — re-export all documents when a template changes
 5. **Sync history** — view past syncs, errors, stats in the web UI
+
+### Phase 6: Upstream KOReader PR
+**Goal:** Make the custom URL feature available to all KOReader users.
+
+1. **Submit PR** to `koreader/koreader` adding configurable server URL to the official Readwise exporter
+2. **Respond to review feedback** — adapt to KOReader maintainer preferences
+3. **Once merged** — users can use stock KOReader without the forked `readwise.lua`
 
 ---
 
