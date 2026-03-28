@@ -1,227 +1,106 @@
-import "@logseq/libs";
+/**
+ * Marginalia Logseq Plugin — entry point.
+ *
+ * Registers the toolbar button, slash command, settings schema,
+ * and auto-sync interval. All logic is delegated to the sync engine.
+ */
 
-const SETTINGS_SCHEMA = [
-  {
-    key: "serviceUrl",
-    type: "string" as const,
-    title: "Marginalia Service URL",
-    description: "URL of your Marginalia instance",
-    default: "",
-  },
-  {
-    key: "apiToken",
-    type: "string" as const,
-    title: "API Token",
-    description: "Bearer token for Marginalia API authentication",
-    default: "",
-  },
-  {
-    key: "bookNamespace",
-    type: "string" as const,
-    title: "Book Namespace",
-    description: "Logseq namespace prefix for book pages",
-    default: "Books",
-  },
-  {
-    key: "articleNamespace",
-    type: "string" as const,
-    title: "Article Namespace",
-    description: "Logseq namespace prefix for article pages",
-    default: "Articles",
-  },
-  {
-    key: "syncOnStartup",
-    type: "boolean" as const,
-    title: "Sync on Startup",
-    description: "Automatically sync highlights when Logseq starts",
-    default: false,
-  },
-  {
-    key: "autoSync",
-    type: "boolean" as const,
-    title: "Auto Sync",
-    description: "Periodically sync highlights in the background",
-    default: false,
-  },
-  {
-    key: "autoSyncInterval",
-    type: "number" as const,
-    title: "Auto Sync Interval (minutes)",
-    description: "How often to auto-sync (if enabled)",
-    default: 30,
-  },
-];
+import "@logseq/libs";
+import { SETTINGS_SCHEMA } from "./settings";
+import { MarginaliaClient } from "./api";
+import { runSync, formatSyncMessage, type SyncState } from "./sync";
+import type { LogseqEditorAPI } from "./writer";
 
 async function main() {
   logseq.useSettingsSchema(SETTINGS_SCHEMA);
 
-  // Register toolbar button
+  // Toolbar button
   logseq.App.registerUIItem("toolbar", {
     key: "marginalia-sync",
     template: `<a class="button" data-on-click="syncHighlights" title="Sync Marginalia highlights">📚</a>`,
   });
 
-  // Register model for UI callbacks
   logseq.provideModel({
     async syncHighlights() {
-      await syncFromMarginalia();
+      await doSync();
     },
   });
 
-  // Register slash command
+  // Slash command
   logseq.Editor.registerSlashCommand("Marginalia Sync", async () => {
-    await syncFromMarginalia();
+    await doSync();
   });
 
-  // Sync on startup if enabled
+  // Sync on startup
   if (logseq.settings?.syncOnStartup) {
-    setTimeout(() => syncFromMarginalia(), 3000);
+    setTimeout(() => doSync(), 3000);
   }
 
   // Auto-sync interval
   if (logseq.settings?.autoSync) {
-    const interval = (logseq.settings?.autoSyncInterval || 30) * 60 * 1000;
-    setInterval(() => syncFromMarginalia(), interval);
+    const intervalMs = (logseq.settings?.autoSyncInterval || 30) * 60 * 1000;
+    setInterval(() => doSync(), intervalMs);
   }
 
-  logseq.App.showMsg("Marginalia plugin loaded");
+  logseq.App.showMsg("📚 Marginalia plugin loaded");
 }
 
-async function syncFromMarginalia() {
-  const serviceUrl = logseq.settings?.serviceUrl;
-  const apiToken = logseq.settings?.apiToken;
+/**
+ * Run a sync cycle with the Logseq Editor API as the output target.
+ */
+async function doSync(): Promise<void> {
+  const serviceUrl = logseq.settings?.serviceUrl as string;
+  const apiToken = logseq.settings?.apiToken as string;
 
   if (!serviceUrl || !apiToken) {
-    logseq.App.showMsg("⚠️ Please configure Marginalia service URL and API token in plugin settings", "warning");
+    logseq.App.showMsg(
+      "⚠️ Configure Marginalia service URL and API token in plugin settings",
+      "warning",
+    );
     return;
   }
 
+  logseq.App.showMsg("🔄 Syncing highlights from Marginalia...");
+
   try {
-    logseq.App.showMsg("🔄 Syncing highlights from Marginalia...");
+    const client = new MarginaliaClient(serviceUrl, apiToken);
 
-    // Trigger sync on the server
-    await fetch(`${serviceUrl}/api/sync`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiToken}` },
+    // Build an adapter from logseq.Editor to the LogseqEditorAPI interface
+    const editor: LogseqEditorAPI = {
+      getPage: (name) => logseq.Editor.getPage(name) as any,
+      createPage: (name, props, opts) => logseq.Editor.createPage(name, props, opts) as any,
+      getPageBlocksTree: (name) => logseq.Editor.getPageBlocksTree(name) as any,
+      insertBlock: (parent, content, opts) => logseq.Editor.insertBlock(parent, content, opts) as any,
+      updateBlock: (uuid, content) => logseq.Editor.updateBlock(uuid, content) as any,
+      removeBlock: (uuid) => logseq.Editor.removeBlock(uuid) as any,
+    };
+
+    // Load persisted state
+    const state: SyncState = {
+      lastSyncTimestamp: logseq.settings?.lastSyncTimestamp as string | undefined,
+      checksumCache: (logseq.settings?.checksumCache as Record<string, string>) ?? {},
+    };
+
+    const settings = {
+      bookNamespace: (logseq.settings?.bookNamespace as string) || "Books",
+      articleNamespace: (logseq.settings?.articleNamespace as string) || "Articles",
+      podcastNamespace: (logseq.settings?.podcastNamespace as string) || "Podcasts",
+    };
+
+    const result = await runSync({ client, editor, settings }, state);
+
+    // Persist updated state
+    logseq.updateSettings({
+      lastSyncTimestamp: result.state.lastSyncTimestamp,
+      checksumCache: result.state.checksumCache,
     });
 
-    // Fetch exported documents
-    const lastSync = logseq.settings?.lastSyncTimestamp || "";
-    const url = lastSync
-      ? `${serviceUrl}/api/export?since=${encodeURIComponent(lastSync)}`
-      : `${serviceUrl}/api/export`;
-
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${apiToken}` },
-    });
-
-    if (!response.ok) {
-      throw new Error(`API returned ${response.status}`);
-    }
-
-    const documents: ExportedDocument[] = await response.json();
-
-    let synced = 0;
-    for (const doc of documents) {
-      await writeDocumentToGraph(doc);
-      synced++;
-    }
-
-    // Save last sync timestamp
-    logseq.updateSettings({ lastSyncTimestamp: new Date().toISOString() });
-
-    logseq.App.showMsg(`✅ Synced ${synced} document${synced !== 1 ? "s" : ""} from Marginalia`, "success");
+    const message = formatSyncMessage(result.stats);
+    const level = result.stats.errors > 0 ? "warning" : "success";
+    logseq.App.showMsg(`📚 ${message}`, level);
   } catch (err) {
     console.error("Marginalia sync error:", err);
     logseq.App.showMsg(`❌ Sync failed: ${err}`, "error");
-  }
-}
-
-interface ExportedDocument {
-  id: string;
-  type: string;
-  title: string;
-  author: string;
-  content: string;
-  updated_at: string;
-  highlight_count: number;
-  checksum: string;
-}
-
-function getNamespaceForType(type: string): string {
-  switch (type) {
-    case "article":
-      return logseq.settings?.articleNamespace || "Articles";
-    case "podcast":
-      return logseq.settings?.podcastNamespace || "Podcasts";
-    default:
-      return logseq.settings?.bookNamespace || "Books";
-  }
-}
-
-function sanitizeTitle(title: string): string {
-  // Remove characters that are invalid in Logseq page names
-  return title.replace(/[/\\:*?"<>|#]/g, "").trim();
-}
-
-async function writeDocumentToGraph(doc: ExportedDocument) {
-  const namespace = getNamespaceForType(doc.type);
-  const pageName = `${namespace}/${sanitizeTitle(doc.title)}`;
-
-  // Check if page exists
-  const existing = await logseq.Editor.getPage(pageName);
-
-  if (existing) {
-    // Page exists — clear and rewrite with new content
-    // (preserves the page but updates all blocks)
-    const blocks = await logseq.Editor.getPageBlocksTree(pageName);
-    for (const block of blocks) {
-      await logseq.Editor.removeBlock(block.uuid);
-    }
-  } else {
-    await logseq.Editor.createPage(pageName, {}, { redirect: false });
-  }
-
-  // Insert the rendered content as blocks
-  const page = await logseq.Editor.getPage(pageName);
-  if (!page) return;
-
-  // Split content into lines and insert as a block tree
-  const lines = doc.content.split("\n");
-
-  // First, insert property lines at the page level
-  const propertyLines: string[] = [];
-  let contentStart = 0;
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].match(/^\w+::/)) {
-      propertyLines.push(lines[i]);
-      contentStart = i + 1;
-    } else {
-      break;
-    }
-  }
-
-  // Insert remaining content as blocks
-  const remainingContent = lines.slice(contentStart).join("\n").trim();
-  if (remainingContent) {
-    // Update page properties
-    if (propertyLines.length > 0) {
-      const propsBlock = await logseq.Editor.insertBlock(page.uuid, propertyLines.join("\n"), { isPageBlock: true });
-    }
-
-    // Insert content blocks
-    const contentLines = remainingContent.split("\n").filter((l) => l.trim());
-    let lastBlock: any = null;
-    for (const line of contentLines) {
-      const trimmed = line.replace(/^\t*- /, "").replace(/^\t*/, "");
-      if (trimmed) {
-        const indent = (line.match(/^\t*/)?.[0] || "").length;
-        const parent = indent > 0 && lastBlock ? lastBlock.uuid : page.uuid;
-        lastBlock = await logseq.Editor.insertBlock(parent, trimmed, {
-          sibling: indent === 0,
-        });
-      }
-    }
   }
 }
 
