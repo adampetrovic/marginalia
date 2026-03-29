@@ -44,7 +44,7 @@
       <tbody>
       {{range .RecentDocuments}}
         <tr>
-          <td>{{.Title}}</td>
+          <td><a href="/ui/documents/{{.ID}}">{{.Title}}</a></td>
           <td class="muted">{{.Author}}</td>
           <td><span class="tag tag-{{.Type}}">{{.Type}}</span></td>
           <td style="text-align:right" class="mono">{{len .Highlights}}</td>

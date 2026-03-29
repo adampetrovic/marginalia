@@ -1,0 +1,57 @@
+{{define "content"}}
+<div style="margin-bottom:1.5rem">
+  <a href="/ui/" style="font-size:0.8125rem; color:var(--secondary);">&larr; All documents</a>
+</div>
+
+<div style="margin-bottom:2rem">
+  <h1 style="margin-bottom:0.25rem">{{.Document.Title}}</h1>
+  <div style="display:flex; flex-wrap:wrap; align-items:center; gap:0.625rem; font-size:0.875rem;">
+    {{if .Document.Author}}<span class="muted">{{.Document.Author}}</span>{{end}}
+    <span class="tag tag-{{.Document.Type}}">{{.Document.Type}}</span>
+    <span class="muted">{{len .Document.Highlights}} highlight{{if ne (len .Document.Highlights) 1}}s{{end}}</span>
+    {{if .Document.URL}}<a href="{{.Document.URL}}" target="_blank" rel="noopener" style="font-size:0.8125rem">Source</a>{{end}}
+  </div>
+</div>
+
+{{if .Document.Highlights}}
+<div class="highlights">
+  {{range .Document.Highlights}}
+  <div class="hl">
+    <blockquote class="hl-text">{{.Text}}</blockquote>
+    {{if .Note}}<div class="hl-note">{{.Note}}</div>{{end}}
+    {{if or .Chapter .PageNumber .Location}}
+    <div class="hl-meta">
+      {{if .Chapter}}{{.Chapter}}{{end}}
+      {{if .PageNumber}} p. {{.PageNumber}}{{end}}
+      {{if and (not .Chapter) (not .PageNumber) .Location}}loc. {{.Location}}{{end}}
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{else}}
+<div class="empty">No highlights for this document.</div>
+{{end}}
+
+<style>
+  .highlights { display: flex; flex-direction: column; gap: 1.25rem; }
+  .hl { padding-left: 1rem; border-left: 2px solid var(--border); }
+  .hl-text {
+    margin: 0; padding: 0; border: none; font-size: 0.9375rem;
+    line-height: 1.7; color: var(--text); font-style: normal;
+  }
+  .hl-note {
+    margin-top: 0.375rem; font-size: 0.8125rem; color: var(--accent);
+    line-height: 1.5;
+  }
+  .hl-meta {
+    margin-top: 0.25rem; font-size: 0.75rem; color: var(--tertiary);
+    font-family: var(--mono);
+  }
+
+  @media (min-width: 640px) {
+    .hl { padding-left: 1.25rem; }
+    .hl-text { font-size: 1rem; }
+  }
+</style>
+{{end}}
