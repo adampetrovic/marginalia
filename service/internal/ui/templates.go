@@ -53,15 +53,49 @@ var funcs = template.FuncMap{
 	},
 }
 
-var templates *template.Template
+// pages holds a separately parsed template for each page.
+// Each page template is combined with layout.html and partials.html
+// so that {{define "content"}} in one page doesn't clobber another.
+var pages map[string]*template.Template
+
+// partials holds templates for htmx fragment responses (no layout).
+var partials *template.Template
 
 func init() {
-	templates = template.Must(
-		template.New("").Funcs(funcs).ParseFS(templateFS, "templates/*.html"),
+	shared := []string{"templates/layout.html"}
+	pageFiles := []string{
+		"templates/dashboard.html",
+		"templates/templates.html",
+		"templates/template_edit.html",
+		"templates/history.html",
+	}
+
+	pages = make(map[string]*template.Template, len(pageFiles))
+	for _, pf := range pageFiles {
+		t := template.Must(
+			template.New("").Funcs(funcs).ParseFS(templateFS, append(shared, pf)...),
+		)
+		pages[pf] = t
+	}
+
+	// Partials are standalone fragments (no layout wrapper).
+	partials = template.Must(
+		template.New("").Funcs(funcs).ParseFS(templateFS, "templates/partials.html"),
 	)
 }
 
-// Render executes a named template into the writer.
-func Render(w io.Writer, name string, data interface{}) error {
-	return templates.ExecuteTemplate(w, name, data)
+// RenderPage executes a page template (wrapped in layout) into the writer.
+// name is the filename inside templates/, e.g. "dashboard.html".
+func RenderPage(w io.Writer, name string, data interface{}) error {
+	key := "templates/" + name
+	t, ok := pages[key]
+	if !ok {
+		return fmt.Errorf("unknown page template: %s", name)
+	}
+	return t.ExecuteTemplate(w, "layout", data)
+}
+
+// RenderPartial executes a named partial template (no layout).
+func RenderPartial(w io.Writer, name string, data interface{}) error {
+	return partials.ExecuteTemplate(w, name, data)
 }

@@ -249,17 +249,16 @@ func (s *Server) uiSyncHistory(w http.ResponseWriter, r *http.Request) {
 
 // --- Render helpers ---
 
-func renderPage(w http.ResponseWriter, tmpl string, data map[string]interface{}) {
+func renderPage(w http.ResponseWriter, name string, data map[string]interface{}) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// First render the content template, then wrap in layout
-	if err := ui.Render(w, "layout", data); err != nil {
+	if err := ui.RenderPage(w, name, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
 func renderPartial(w http.ResponseWriter, name string, data interface{}) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := ui.Render(w, name, data); err != nil {
+	if err := ui.RenderPartial(w, name, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
