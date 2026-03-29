@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"gorm.io/gorm"
 
 	"github.com/adampetrovic/marginalia/service/internal/models"
 	"github.com/adampetrovic/marginalia/service/internal/render"
@@ -27,6 +28,8 @@ func (s *Server) registerUIRoutes(r chi.Router) {
 		r.Post("/templates/{id}", s.uiTemplateUpdate)
 		r.Post("/templates/validate", s.uiTemplateValidate)
 		r.Post("/templates/preview", s.uiTemplatePreview)
+
+		r.Get("/documents/{id}", s.uiDocumentDetail)
 
 		r.Get("/history", s.uiSyncHistory)
 	})
@@ -81,6 +84,25 @@ func (s *Server) uiSyncAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	renderPartial(w, "sync-success", results)
+}
+
+// --- Document Detail ---
+
+func (s *Server) uiDocumentDetail(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var doc models.Document
+	if err := s.db.Preload("Highlights", func(db *gorm.DB) *gorm.DB {
+		return db.Order("location_sort_key ASC, created_at ASC")
+	}).Preload("Source").First(&doc, "id = ?", id).Error; err != nil {
+		http.Redirect(w, r, "/ui/", http.StatusSeeOther)
+		return
+	}
+
+	renderPage(w, "document.html", map[string]interface{}{
+		"Nav":      "dashboard",
+		"Title":    doc.Title,
+		"Document": doc,
+	})
 }
 
 // --- Templates ---

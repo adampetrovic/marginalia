@@ -65,6 +65,7 @@ func init() {
 	shared := []string{"templates/layout.html"}
 	pageFiles := []string{
 		"templates/dashboard.html",
+		"templates/document.html",
 		"templates/templates.html",
 		"templates/template_edit.html",
 		"templates/history.html",
