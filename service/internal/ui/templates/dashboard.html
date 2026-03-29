@@ -1,22 +1,20 @@
 {{define "content"}}
-<h1>Dashboard</h1>
-
 <div class="stats">
   <div class="card stat">
-    <div class="value">{{.DocumentCount}}</div>
-    <div class="label">Documents</div>
+    <div class="value">{{.BookCount}}</div>
+    <div class="label">Books</div>
+  </div>
+  <div class="card stat">
+    <div class="value">{{.ArticleCount}}</div>
+    <div class="label">Articles</div>
   </div>
   <div class="card stat">
     <div class="value">{{.HighlightCount}}</div>
     <div class="label">Highlights</div>
   </div>
   <div class="card stat">
-    <div class="value">{{.SourceCount}}</div>
+    <div class="value">{{len .Sources}}</div>
     <div class="label">Sources</div>
-  </div>
-  <div class="card stat">
-    <div class="value">{{.TemplateCount}}</div>
-    <div class="label">Templates</div>
   </div>
 </div>
 
@@ -26,58 +24,35 @@
           hx-target="#sync-result"
           hx-indicator="#sync-spinner"
           hx-disabled-elt="this">
-    ↻ Sync All Sources
+    ↻ Sync Now
   </button>
   <span id="sync-spinner" class="htmx-indicator" style="color: var(--muted); font-size: 0.85rem;">syncing…</span>
+  {{if .LastSync.CompletedAt}}
+  <span style="color: var(--muted); font-size: 0.8rem; align-self: center;">Last sync: {{timeAgo .LastSync.CompletedAt}}</span>
+  {{end}}
 </div>
 <div id="sync-result"></div>
 
-<div class="grid-2">
-  <div>
-    <h2>Recent Documents</h2>
-    <div class="card">
-      {{if .RecentDocuments}}
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Title</th><th>Type</th><th>Highlights</th></tr></thead>
-          <tbody>
-          {{range .RecentDocuments}}
-            <tr>
-              <td>{{.Title}}</td>
-              <td><span class="badge badge-{{.Type}}">{{.Type}}</span></td>
-              <td>{{len .Highlights}}</td>
-            </tr>
-          {{end}}
-          </tbody>
-        </table>
-      </div>
-      {{else}}
-      <div class="empty">No documents yet. Trigger a sync to get started.</div>
+<h2>Documents</h2>
+<div class="card">
+  {{if .RecentDocuments}}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Title</th><th>Author</th><th>Type</th><th>Highlights</th></tr></thead>
+      <tbody>
+      {{range .RecentDocuments}}
+        <tr>
+          <td>{{.Title}}</td>
+          <td style="color: var(--muted);">{{.Author}}</td>
+          <td><span class="badge badge-{{.Type}}">{{.Type}}</span></td>
+          <td>{{len .Highlights}}</td>
+        </tr>
       {{end}}
-    </div>
+      </tbody>
+    </table>
   </div>
-  <div>
-    <h2>Sources</h2>
-    <div class="card">
-      {{if .Sources}}
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Name</th><th>Type</th><th>Last Synced</th></tr></thead>
-          <tbody>
-          {{range .Sources}}
-            <tr>
-              <td>{{.Name}}</td>
-              <td><span class="badge badge-default">{{.Type}}</span></td>
-              <td>{{timeAgo .LastSyncedAt}}</td>
-            </tr>
-          {{end}}
-          </tbody>
-        </table>
-      </div>
-      {{else}}
-      <div class="empty">No sources configured.</div>
-      {{end}}
-    </div>
-  </div>
+  {{else}}
+  <div class="empty">No documents yet. Hit sync to get started.</div>
+  {{end}}
 </div>
 {{end}}
