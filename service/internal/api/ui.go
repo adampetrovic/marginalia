@@ -35,11 +35,10 @@ func (s *Server) registerUIRoutes(r chi.Router) {
 // --- Dashboard ---
 
 func (s *Server) uiDashboard(w http.ResponseWriter, r *http.Request) {
-	var docCount, hlCount, srcCount, tplCount int64
-	s.db.Model(&models.Document{}).Count(&docCount)
+	var bookCount, articleCount, hlCount int64
+	s.db.Model(&models.Document{}).Where("type = ?", "book").Count(&bookCount)
+	s.db.Model(&models.Document{}).Where("type = ?", "article").Count(&articleCount)
 	s.db.Model(&models.Highlight{}).Count(&hlCount)
-	s.db.Model(&models.Source{}).Count(&srcCount)
-	s.db.Model(&models.Template{}).Count(&tplCount)
 
 	var sources []models.Source
 	s.db.Find(&sources)
@@ -47,15 +46,19 @@ func (s *Server) uiDashboard(w http.ResponseWriter, r *http.Request) {
 	var recentDocs []models.Document
 	s.db.Preload("Highlights").Order("updated_at DESC").Limit(10).Find(&recentDocs)
 
+	// Last sync time
+	var lastLog models.SyncLog
+	s.db.Where("status = ?", "completed").Order("completed_at DESC").First(&lastLog)
+
 	renderPage(w, "dashboard.html", map[string]interface{}{
 		"Nav":             "dashboard",
 		"Title":           "Dashboard",
-		"DocumentCount":   docCount,
+		"BookCount":       bookCount,
+		"ArticleCount":    articleCount,
 		"HighlightCount":  hlCount,
-		"SourceCount":     srcCount,
-		"TemplateCount":   tplCount,
 		"Sources":         sources,
 		"RecentDocuments": recentDocs,
+		"LastSync":        lastLog,
 	})
 }
 
