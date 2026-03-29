@@ -1,5 +1,5 @@
 {{define "content"}}
-<h1>Sync History</h1>
+<h1>Sync Log</h1>
 
 <div class="actions">
   <button class="btn btn-primary"
@@ -8,13 +8,13 @@
           hx-indicator="#sync-spinner"
           hx-disabled-elt="this"
           hx-on::after-request="setTimeout(()=>location.reload(), 1000)">
-    ↻ Sync Now
+    Sync now
   </button>
-  <span id="sync-spinner" class="htmx-indicator" style="color: var(--muted); font-size: 0.85rem;">syncing…</span>
+  <span id="sync-spinner" class="htmx-indicator muted" style="font-size:0.8125rem">Syncing&hellip;</span>
 </div>
 <div id="sync-result"></div>
 
-<div class="card">
+<div class="section">
   {{if .Logs}}
   <div class="table-wrap">
     <table>
@@ -22,8 +22,8 @@
         <tr>
           <th>Source</th>
           <th>Status</th>
-          <th>Docs</th>
-          <th>Highlights</th>
+          <th style="text-align:right">Docs</th>
+          <th style="text-align:right">Highlights</th>
           <th>Started</th>
           <th>Completed</th>
           <th>Error</th>
@@ -33,12 +33,12 @@
       {{range .Logs}}
         <tr>
           <td>{{.SourceID}}</td>
-          <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
-          <td>{{.DocumentsSynced}}</td>
-          <td>{{.HighlightsSynced}}</td>
-          <td style="white-space: nowrap;">{{fmtTime .StartedAt}}</td>
-          <td style="white-space: nowrap;">{{fmtTimePtr .CompletedAt}}</td>
-          <td style="color: var(--error); font-size: 0.8rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis;">{{if .Error}}{{.Error}}{{end}}</td>
+          <td><span class="tag tag-{{.Status}}">{{.Status}}</span></td>
+          <td style="text-align:right" class="mono">{{.DocumentsSynced}}</td>
+          <td style="text-align:right" class="mono">{{.HighlightsSynced}}</td>
+          <td class="muted" style="white-space:nowrap">{{fmtTime .StartedAt}}</td>
+          <td class="muted" style="white-space:nowrap">{{fmtTimePtr .CompletedAt}}</td>
+          <td style="color:var(--error); font-size:0.8125rem; max-width:200px; overflow:hidden; text-overflow:ellipsis;">{{.Error}}</td>
         </tr>
       {{end}}
       </tbody>

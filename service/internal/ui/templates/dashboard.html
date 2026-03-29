@@ -1,20 +1,20 @@
 {{define "content"}}
 <div class="stats">
-  <div class="card stat">
-    <div class="value">{{.BookCount}}</div>
-    <div class="label">Books</div>
+  <div class="stat">
+    <div class="stat-value">{{.BookCount}}</div>
+    <div class="stat-label">Books</div>
   </div>
-  <div class="card stat">
-    <div class="value">{{.ArticleCount}}</div>
-    <div class="label">Articles</div>
+  <div class="stat">
+    <div class="stat-value">{{.ArticleCount}}</div>
+    <div class="stat-label">Articles</div>
   </div>
-  <div class="card stat">
-    <div class="value">{{.HighlightCount}}</div>
-    <div class="label">Highlights</div>
+  <div class="stat">
+    <div class="stat-value">{{.HighlightCount}}</div>
+    <div class="stat-label">Highlights</div>
   </div>
-  <div class="card stat">
-    <div class="value">{{len .Sources}}</div>
-    <div class="label">Sources</div>
+  <div class="stat">
+    <div class="stat-value">{{len .Sources}}</div>
+    <div class="stat-label">Sources</div>
   </div>
 </div>
 
@@ -24,35 +24,37 @@
           hx-target="#sync-result"
           hx-indicator="#sync-spinner"
           hx-disabled-elt="this">
-    ↻ Sync Now
+    Sync now
   </button>
-  <span id="sync-spinner" class="htmx-indicator" style="color: var(--muted); font-size: 0.85rem;">syncing…</span>
+  <span id="sync-spinner" class="htmx-indicator muted" style="font-size: 0.8125rem;">Syncing&hellip;</span>
   {{if .LastSync.CompletedAt}}
-  <span style="color: var(--muted); font-size: 0.8rem; align-self: center;">Last sync: {{timeAgo .LastSync.CompletedAt}}</span>
+  <span class="muted" style="font-size: 0.8125rem;">Last sync {{timeAgo .LastSync.CompletedAt}}</span>
   {{end}}
 </div>
 <div id="sync-result"></div>
 
-<h2>Documents</h2>
-<div class="card">
+<div class="section">
+  <h2>Documents</h2>
   {{if .RecentDocuments}}
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Title</th><th>Author</th><th>Type</th><th>Highlights</th></tr></thead>
+      <thead>
+        <tr><th>Title</th><th>Author</th><th>Type</th><th style="text-align:right">Highlights</th></tr>
+      </thead>
       <tbody>
       {{range .RecentDocuments}}
         <tr>
           <td>{{.Title}}</td>
-          <td style="color: var(--muted);">{{.Author}}</td>
-          <td><span class="badge badge-{{.Type}}">{{.Type}}</span></td>
-          <td>{{len .Highlights}}</td>
+          <td class="muted">{{.Author}}</td>
+          <td><span class="tag tag-{{.Type}}">{{.Type}}</span></td>
+          <td style="text-align:right" class="mono">{{len .Highlights}}</td>
         </tr>
       {{end}}
       </tbody>
     </table>
   </div>
   {{else}}
-  <div class="empty">No documents yet. Hit sync to get started.</div>
+  <div class="empty">No documents yet. Connect a source and sync to get started.</div>
   {{end}}
 </div>
 {{end}}

@@ -2,11 +2,11 @@
 <h1>Templates</h1>
 
 <div class="actions">
-  <a href="/ui/templates/new" class="btn btn-primary">+ New Template</a>
+  <a href="/ui/templates/new" class="btn btn-primary">New template</a>
 </div>
 
-<h2>Custom Templates</h2>
-<div class="card">
+<div class="section">
+  <h2>Custom</h2>
   {{if .Templates}}
   <div class="table-wrap">
     <table>
@@ -15,29 +15,31 @@
       {{range .Templates}}
         <tr>
           <td><a href="/ui/templates/{{.ID}}">{{.Name}}</a></td>
-          <td><span class="badge badge-{{.Type}}">{{.Type}}</span></td>
-          <td>{{if .IsDefault}}✓{{end}}</td>
-          <td style="white-space: nowrap;">{{fmtTime .UpdatedAt}}</td>
-          <td><a href="/ui/templates/{{.ID}}" class="btn btn-outline btn-sm">Edit</a></td>
+          <td><span class="tag tag-{{.Type}}">{{.Type}}</span></td>
+          <td>{{if .IsDefault}}Yes{{end}}</td>
+          <td class="muted">{{fmtTime .UpdatedAt}}</td>
+          <td><a href="/ui/templates/{{.ID}}" class="btn btn-secondary btn-sm">Edit</a></td>
         </tr>
       {{end}}
       </tbody>
     </table>
   </div>
   {{else}}
-  <div class="empty">No custom templates. Using built-in defaults.</div>
+  <div class="empty">No custom templates. The built-in defaults below are active.</div>
   {{end}}
 </div>
 
-<h2>Built-in Defaults</h2>
-<div class="grid-2">
-  <div class="card">
-    <h2>Book Template</h2>
-    <div class="preview-pane has-content">{{.DefaultBookTemplate}}</div>
-  </div>
-  <div class="card">
-    <h2>Article Template</h2>
-    <div class="preview-pane has-content">{{.DefaultArticleTemplate}}</div>
+<div class="section">
+  <h2>Built-in defaults</h2>
+  <div class="cols">
+    <div>
+      <label>Book</label>
+      <div class="preview-pane has-content" style="margin-top:0.25rem">{{.DefaultBookTemplate}}</div>
+    </div>
+    <div>
+      <label>Article</label>
+      <div class="preview-pane has-content" style="margin-top:0.25rem">{{.DefaultArticleTemplate}}</div>
+    </div>
   </div>
 </div>
 {{end}}
