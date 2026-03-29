@@ -72,8 +72,9 @@ func init() {
 
 	pages = make(map[string]*template.Template, len(pageFiles))
 	for _, pf := range pageFiles {
+		files := []string{shared[0], pf}
 		t := template.Must(
-			template.New("").Funcs(funcs).ParseFS(templateFS, append(shared, pf)...),
+			template.New("").Funcs(funcs).ParseFS(templateFS, files...),
 		)
 		pages[pf] = t
 	}
