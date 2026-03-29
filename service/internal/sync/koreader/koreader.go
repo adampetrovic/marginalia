@@ -75,32 +75,42 @@ func Ingest(db *gorm.DB, sourceID string, req ReadwiseHighlightRequest) (*Ingest
 		}
 		result.DocumentsSynced++
 
+		// Process note shortcuts (.c1-.c5 concat, .h1-.h5 headings)
+		processed := ProcessShortcuts(highlights)
+
 		var lastHighlightedAt *time.Time
-		for i, hl := range highlights {
-			hlTime := parseTime(hl.HighlightedAt)
+		for _, ph := range processed {
+			hlTime := parseTime(ph.HighlightedAt)
 			if hlTime != nil && (lastHighlightedAt == nil || hlTime.After(*lastHighlightedAt)) {
 				lastHighlightedAt = hlTime
 			}
 
-			// Generate stable highlight ID from document + location + text prefix
-			sourceHLID := fmt.Sprintf("%d:%s", hl.Location, truncate(hl.Text, 50))
+			// Stable highlight ID from the processed source key
+			sourceHLID := ph.SourceIDKey
+
+			// Build tags — include heading level if set
+			var tags models.JSONStringArray
+			if tag := HeadingTag(ph.HeadingLevel); tag != "" {
+				tags = models.JSONStringArray{tag}
+			}
 
 			highlight := models.Highlight{
-				ID:                fmt.Sprintf("%s-hl-%d", doc.ID, i),
+				ID:                fmt.Sprintf("%s-%s", doc.ID, sanitizeID(sourceHLID)),
 				DocumentID:        doc.ID,
 				SourceHighlightID: sourceHLID,
-				Text:              hl.Text,
-				Note:              hl.Note,
-				Location:          fmt.Sprintf("%d", hl.Location),
-				LocationType:      hl.LocationType,
-				LocationSortKey:   float64(hl.Location),
+				Text:              ph.Text,
+				Note:              ph.Note,
+				Tags:              tags,
+				Location:          fmt.Sprintf("%d", ph.Location),
+				LocationType:      ph.LocationType,
+				LocationSortKey:   float64(ph.Location),
 				HighlightedAt:     hlTime,
 				SyncedAt:          time.Now(),
 			}
 
 			if err := db.Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "document_id"}, {Name: "source_highlight_id"}},
-				DoUpdates: clause.AssignmentColumns([]string{"text", "note", "synced_at", "updated_at"}),
+				DoUpdates: clause.AssignmentColumns([]string{"text", "note", "tags", "synced_at", "updated_at"}),
 			}).Create(&highlight).Error; err != nil {
 				return nil, fmt.Errorf("upserting highlight: %w", err)
 			}
@@ -158,9 +168,4 @@ func sanitizeID(s string) string {
 	return result
 }
 
-func truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen]
-}
+

@@ -168,6 +168,99 @@ func TestIngest_UpdatesNoteOnResubmit(t *testing.T) {
 	}
 }
 
+func TestIngest_ConcatGroupGrows(t *testing.T) {
+	db := setupTestDB(t)
+	db.Create(&models.Source{ID: "koreader", Type: "koreader", Name: "KOReader"})
+
+	// First ingest: two highlights in concat group 1
+	req1 := ReadwiseHighlightRequest{
+		Highlights: []ReadwiseHighlight{
+			{Text: "Part A", Title: "Book", Author: "Author", Note: ".c1", Location: 10, LocationType: "order"},
+			{Text: "Part B", Title: "Book", Author: "Author", Note: ".c1", Location: 11, LocationType: "order"},
+			{Text: "Unrelated", Title: "Book", Author: "Author", Location: 20, LocationType: "order"},
+		},
+	}
+	_, err := Ingest(db, "koreader", req1)
+	if err != nil {
+		t.Fatalf("first ingest: %v", err)
+	}
+
+	var hlCount1 int64
+	db.Model(&models.Highlight{}).Count(&hlCount1)
+	if hlCount1 != 2 {
+		t.Fatalf("after first ingest: expected 2 highlights (1 merged + 1 solo), got %d", hlCount1)
+	}
+
+	var merged1 models.Highlight
+	db.Where("source_highlight_id = ?", "concat:1").First(&merged1)
+	if merged1.Text != "Part A Part B" {
+		t.Errorf("first merge text = %q", merged1.Text)
+	}
+
+	// Second ingest: add a third highlight to the same concat group
+	req2 := ReadwiseHighlightRequest{
+		Highlights: []ReadwiseHighlight{
+			{Text: "Part A", Title: "Book", Author: "Author", Note: ".c1", Location: 10, LocationType: "order"},
+			{Text: "Part B", Title: "Book", Author: "Author", Note: ".c1", Location: 11, LocationType: "order"},
+			{Text: "Part C", Title: "Book", Author: "Author", Note: ".c1", Location: 12, LocationType: "order"},
+			{Text: "Unrelated", Title: "Book", Author: "Author", Location: 20, LocationType: "order"},
+		},
+	}
+	_, err = Ingest(db, "koreader", req2)
+	if err != nil {
+		t.Fatalf("second ingest: %v", err)
+	}
+
+	// Should still be 2 highlights, not 3 — the concat group was updated in place
+	var hlCount2 int64
+	db.Model(&models.Highlight{}).Count(&hlCount2)
+	if hlCount2 != 2 {
+		t.Errorf("after second ingest: expected 2 highlights, got %d", hlCount2)
+	}
+
+	var merged2 models.Highlight
+	db.Where("source_highlight_id = ?", "concat:1").First(&merged2)
+	if merged2.Text != "Part A Part B Part C" {
+		t.Errorf("second merge text = %q, want 'Part A Part B Part C'", merged2.Text)
+	}
+
+	// Same DB record (same ID)
+	if merged1.ID != merged2.ID {
+		t.Errorf("highlight ID changed: %q → %q", merged1.ID, merged2.ID)
+	}
+}
+
+func TestIngest_HeadingStored(t *testing.T) {
+	db := setupTestDB(t)
+	db.Create(&models.Source{ID: "koreader", Type: "koreader", Name: "KOReader"})
+
+	req := ReadwiseHighlightRequest{
+		Highlights: []ReadwiseHighlight{
+			{Text: "Chapter One", Title: "Book", Author: "Author", Note: ".h1", Location: 1, LocationType: "order"},
+			{Text: "Normal highlight", Title: "Book", Author: "Author", Location: 5, LocationType: "order"},
+		},
+	}
+	_, err := Ingest(db, "koreader", req)
+	if err != nil {
+		t.Fatalf("ingest: %v", err)
+	}
+
+	var heading models.Highlight
+	db.Where("location_sort_key = ?", 1).First(&heading)
+	if len(heading.Tags) != 1 || heading.Tags[0] != "h1" {
+		t.Errorf("heading tags = %v, want [h1]", heading.Tags)
+	}
+	if heading.Note != "" {
+		t.Errorf("heading note = %q, want empty (shortcode stripped)", heading.Note)
+	}
+
+	var normal models.Highlight
+	db.Where("location_sort_key = ?", 5).First(&normal)
+	if len(normal.Tags) != 0 {
+		t.Errorf("normal tags = %v, want empty", normal.Tags)
+	}
+}
+
 func TestParseTime(t *testing.T) {
 	tests := []struct {
 		input string

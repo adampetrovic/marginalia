@@ -22,11 +22,14 @@ source:: {{ source }}
 {% endif %}
 - ## Highlights
 {% for highlight in highlights %}
-	- > {{ highlight.text }}
+{% if "h1" in highlight.tags %}	- ### {{ highlight.text }}
+{% elif "h2" in highlight.tags %}	- #### {{ highlight.text }}
+{% elif "h3" in highlight.tags %}	- ##### {{ highlight.text }}
+{% else %}	- > {{ highlight.text }}
 {% if highlight.note %}		- **Note:** {{ highlight.note }}
 {% endif %}{% if highlight.color %}		- color:: {{ highlight.color }}
 {% endif %}{% if highlight.chapter or highlight.page_number %}		- location::{% if highlight.chapter %} {{ highlight.chapter }}{% endif %}{% if highlight.page_number %} (p. {{ highlight.page_number }}){% endif %}
-{% endif %}{% endfor %}`
+{% endif %}{% endif %}{% endfor %}`
 
 // DefaultArticlePageTemplate is the built-in template for article documents.
 const DefaultArticlePageTemplate = `title:: {{ title }}
