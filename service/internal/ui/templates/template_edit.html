@@ -1,7 +1,7 @@
 {{define "content"}}
 <h1>{{if .IsNew}}New template{{else}}{{.Template.Name}}{{end}}</h1>
 
-<form method="POST" action="/ui/templates/{{if .IsNew}}new{{else}}{{.Template.ID}}{{end}}">
+<form method="POST" action="/templates/{{if .IsNew}}new{{else}}{{.Template.ID}}{{end}}">
   <div class="cols">
     <div>
       <div class="form-group">
@@ -30,14 +30,14 @@
       <div class="actions">
         <button type="submit" class="btn btn-primary">{{if .IsNew}}Create{{else}}Save{{end}}</button>
         <button type="button" class="btn btn-secondary"
-                hx-post="/ui/templates/validate"
+                hx-post="/templates/validate"
                 hx-include="[name='page_template']"
                 hx-target="#validation-result">Validate</button>
         <button type="button" class="btn btn-secondary"
-                hx-post="/ui/templates/preview"
+                hx-post="/templates/preview"
                 hx-include="[name='page_template'],[name='type']"
                 hx-target="#preview-output">Preview</button>
-        <a href="/ui/templates" class="btn btn-secondary">Cancel</a>
+        <a href="/templates" class="btn btn-secondary">Cancel</a>
       </div>
       <div id="validation-result"></div>
       {{if .Error}}<div class="msg-error">{{.Error}}</div>{{end}}
