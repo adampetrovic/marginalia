@@ -66,7 +66,7 @@ func doRequest(srv *Server, method, path string, body interface{}, token string)
 
 func TestAuth_NoToken(t *testing.T) {
 	srv, _ := setupTestServer(t)
-	rr := doRequest(srv, "GET", "/api/sources", nil, "")
+	rr := doRequest(srv, "GET", "/api/v1/sources", nil, "")
 	if rr.Code != http.StatusUnauthorized {
 		t.Errorf("expected 401, got %d", rr.Code)
 	}
@@ -74,7 +74,7 @@ func TestAuth_NoToken(t *testing.T) {
 
 func TestAuth_WrongToken(t *testing.T) {
 	srv, _ := setupTestServer(t)
-	rr := doRequest(srv, "GET", "/api/sources", nil, "wrong-token")
+	rr := doRequest(srv, "GET", "/api/v1/sources", nil, "wrong-token")
 	if rr.Code != http.StatusUnauthorized {
 		t.Errorf("expected 401, got %d", rr.Code)
 	}
@@ -82,7 +82,7 @@ func TestAuth_WrongToken(t *testing.T) {
 
 func TestAuth_ValidToken(t *testing.T) {
 	srv, _ := setupTestServer(t)
-	rr := doRequest(srv, "GET", "/api/sources", nil, testToken)
+	rr := doRequest(srv, "GET", "/api/v1/sources", nil, testToken)
 	if rr.Code != http.StatusOK {
 		t.Errorf("expected 200, got %d", rr.Code)
 	}
@@ -92,7 +92,7 @@ func TestAuth_KOReaderTokenFormat(t *testing.T) {
 	srv, _ := setupTestServer(t)
 
 	// KOReader uses "Token <token>" instead of "Bearer <token>"
-	req := httptest.NewRequest("GET", "/api/sources", nil)
+	req := httptest.NewRequest("GET", "/api/v1/sources", nil)
 	req.Header.Set("Authorization", "Token "+testToken)
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
@@ -116,7 +116,7 @@ func TestHealthz(t *testing.T) {
 
 func TestListDocuments_Empty(t *testing.T) {
 	srv, _ := setupTestServer(t)
-	rr := doRequest(srv, "GET", "/api/documents", nil, testToken)
+	rr := doRequest(srv, "GET", "/api/v1/documents", nil, testToken)
 	if rr.Code != http.StatusOK {
 		t.Errorf("expected 200, got %d", rr.Code)
 	}
@@ -136,7 +136,7 @@ func TestGetDocument(t *testing.T) {
 		Text: "Important text",
 	})
 
-	rr := doRequest(srv, "GET", "/api/documents/doc-1", nil, testToken)
+	rr := doRequest(srv, "GET", "/api/v1/documents/doc-1", nil, testToken)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
 	}
@@ -153,7 +153,7 @@ func TestGetDocument(t *testing.T) {
 
 func TestGetDocument_NotFound(t *testing.T) {
 	srv, _ := setupTestServer(t)
-	rr := doRequest(srv, "GET", "/api/documents/nonexistent", nil, testToken)
+	rr := doRequest(srv, "GET", "/api/v1/documents/nonexistent", nil, testToken)
 	if rr.Code != http.StatusNotFound {
 		t.Errorf("expected 404, got %d", rr.Code)
 	}
@@ -172,13 +172,13 @@ func TestTemplateCRUD(t *testing.T) {
 		PageTemplate: "# {{ title }}\n{% for h in highlights %}- {{ h.text }}\n{% endfor %}",
 		IsDefault:    true,
 	}
-	rr := doRequest(srv, "POST", "/api/templates", tmpl, testToken)
+	rr := doRequest(srv, "POST", "/api/v1/templates", tmpl, testToken)
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("create: expected 201, got %d: %s", rr.Code, rr.Body.String())
 	}
 
 	// List
-	rr = doRequest(srv, "GET", "/api/templates", nil, testToken)
+	rr = doRequest(srv, "GET", "/api/v1/templates", nil, testToken)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("list: expected 200, got %d", rr.Code)
 	}
@@ -189,7 +189,7 @@ func TestTemplateCRUD(t *testing.T) {
 	}
 
 	// Get
-	rr = doRequest(srv, "GET", "/api/templates/tmpl-1", nil, testToken)
+	rr = doRequest(srv, "GET", "/api/v1/templates/tmpl-1", nil, testToken)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("get: expected 200, got %d", rr.Code)
 	}
@@ -199,7 +199,7 @@ func TestTemplateCRUD(t *testing.T) {
 		Name:         "Updated Template",
 		PageTemplate: "## {{ title }}",
 	}
-	rr = doRequest(srv, "PUT", "/api/templates/tmpl-1", update, testToken)
+	rr = doRequest(srv, "PUT", "/api/v1/templates/tmpl-1", update, testToken)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("update: expected 200, got %d: %s", rr.Code, rr.Body.String())
 	}
@@ -217,7 +217,7 @@ func TestPreviewTemplate(t *testing.T) {
 		"page_template": "# {{ title }} by {{ author }}",
 		"type":          "book",
 	}
-	rr := doRequest(srv, "POST", "/api/templates/preview", body, testToken)
+	rr := doRequest(srv, "POST", "/api/v1/templates/preview", body, testToken)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
 	}
@@ -245,7 +245,7 @@ func TestExport(t *testing.T) {
 		Text: "Key insight from the article",
 	})
 
-	rr := doRequest(srv, "GET", "/api/export", nil, testToken)
+	rr := doRequest(srv, "GET", "/api/v1/export", nil, testToken)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
 	}

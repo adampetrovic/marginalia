@@ -20,7 +20,7 @@
 
 <div class="actions">
   <button class="btn btn-primary"
-          hx-post="/ui/sync"
+          hx-post="/sync"
           hx-target="#sync-result"
           hx-indicator="#sync-spinner"
           hx-disabled-elt="this">
@@ -36,11 +36,11 @@
 {{/* ── Search ── */}}
 <div class="section">
   <div class="search-row">
-    <form method="GET" action="/ui/" class="search-form">
+    <form method="GET" action="/" class="search-form">
       <input type="hidden" name="tab" value="{{.Tab}}">
       <input type="text" name="q" value="{{.Query}}" placeholder="Search titles and authors&hellip;" class="search-input">
     </form>
-    <form method="GET" action="/ui/" class="search-form">
+    <form method="GET" action="/" class="search-form">
       <input type="text" name="hl" value="{{.HighlightQuery}}" placeholder="Search highlights&hellip;" class="search-input">
     </form>
   </div>
@@ -57,7 +57,7 @@
       <div class="hl-result-text">{{.Text}}</div>
       {{if .Note}}<div class="hl-result-note">{{.Note}}</div>{{end}}
       <div class="hl-result-meta">
-        <a href="/ui/documents/{{.DocumentID}}">{{.Document.Title}}</a>
+        <a href="/documents/{{.DocumentID}}">{{.Document.Title}}</a>
         {{if .Document.Author}}<span class="muted">&mdash; {{.Document.Author}}</span>{{end}}
       </div>
     </div>
@@ -72,9 +72,9 @@
 {{/* ── Tabs ── */}}
 <div class="section">
   <div class="tabs">
-    <a href="/ui/?tab=all{{if .Query}}&q={{.Query}}{{end}}" class="tab {{if eq .Tab "all"}}tab-active{{end}}">All</a>
-    <a href="/ui/?tab=book{{if .Query}}&q={{.Query}}{{end}}" class="tab {{if eq .Tab "book"}}tab-active{{end}}">Books</a>
-    <a href="/ui/?tab=article{{if .Query}}&q={{.Query}}{{end}}" class="tab {{if eq .Tab "article"}}tab-active{{end}}">Articles</a>
+    <a href="/?tab=all{{if .Query}}&q={{.Query}}{{end}}" class="tab {{if eq .Tab "all"}}tab-active{{end}}">All</a>
+    <a href="/?tab=book{{if .Query}}&q={{.Query}}{{end}}" class="tab {{if eq .Tab "book"}}tab-active{{end}}">Books</a>
+    <a href="/?tab=article{{if .Query}}&q={{.Query}}{{end}}" class="tab {{if eq .Tab "article"}}tab-active{{end}}">Articles</a>
   </div>
 
   {{if .Documents}}
@@ -86,7 +86,7 @@
       <tbody>
       {{range .Documents}}
         <tr>
-          <td><a href="/ui/documents/{{.ID}}">{{.Title}}</a></td>
+          <td><a href="/documents/{{.ID}}">{{.Title}}</a></td>
           <td class="muted">{{.Author}}</td>
           {{if eq $.Tab "all"}}<td><span class="tag tag-{{.Type}}">{{.Type}}</span></td>{{end}}
           <td style="text-align:right" class="mono">{{len .Highlights}}</td>

@@ -13,9 +13,9 @@ import (
 	"github.com/adampetrovic/marginalia/service/internal/ui"
 )
 
-// registerUIRoutes adds the web UI routes to the router.
+// registerUIRoutes adds the web UI routes to the router (served at root).
 func (s *Server) registerUIRoutes(r chi.Router) {
-	r.Route("/ui", func(r chi.Router) {
+	r.Group(func(r chi.Router) {
 		r.Use(s.authMiddleware)
 
 		r.Get("/", s.uiDashboard)
@@ -125,7 +125,7 @@ func (s *Server) uiDocumentDetail(w http.ResponseWriter, r *http.Request) {
 	if err := s.db.Preload("Highlights", func(db *gorm.DB) *gorm.DB {
 		return db.Order("location_sort_key ASC, created_at ASC")
 	}).Preload("Source").First(&doc, "id = ?", id).Error; err != nil {
-		http.Redirect(w, r, "/ui/", http.StatusSeeOther)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
@@ -194,14 +194,14 @@ func (s *Server) uiTemplateCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/ui/templates", http.StatusSeeOther)
+	http.Redirect(w, r, "/templates", http.StatusSeeOther)
 }
 
 func (s *Server) uiTemplateEdit(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var tmpl models.Template
 	if err := s.db.First(&tmpl, "id = ?", id).Error; err != nil {
-		http.Redirect(w, r, "/ui/templates", http.StatusSeeOther)
+		http.Redirect(w, r, "/templates", http.StatusSeeOther)
 		return
 	}
 
@@ -218,7 +218,7 @@ func (s *Server) uiTemplateUpdate(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var tmpl models.Template
 	if err := s.db.First(&tmpl, "id = ?", id).Error; err != nil {
-		http.Redirect(w, r, "/ui/templates", http.StatusSeeOther)
+		http.Redirect(w, r, "/templates", http.StatusSeeOther)
 		return
 	}
 
@@ -249,7 +249,7 @@ func (s *Server) uiTemplateUpdate(w http.ResponseWriter, r *http.Request) {
 		"is_default":    r.FormValue("is_default") == "on",
 	})
 
-	http.Redirect(w, r, fmt.Sprintf("/ui/templates/%s?saved=Template+saved", id), http.StatusSeeOther)
+	http.Redirect(w, r, fmt.Sprintf("/templates/%s?saved=Template+saved", id), http.StatusSeeOther)
 }
 
 func (s *Server) uiTemplateValidate(w http.ResponseWriter, r *http.Request) {

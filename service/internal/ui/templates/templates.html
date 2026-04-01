@@ -2,7 +2,7 @@
 <h1>Templates</h1>
 
 <div class="actions">
-  <a href="/ui/templates/new" class="btn btn-primary">New template</a>
+  <a href="/templates/new" class="btn btn-primary">New template</a>
 </div>
 
 <div class="section">
@@ -14,11 +14,11 @@
       <tbody>
       {{range .Templates}}
         <tr>
-          <td><a href="/ui/templates/{{.ID}}">{{.Name}}</a></td>
+          <td><a href="/templates/{{.ID}}">{{.Name}}</a></td>
           <td><span class="tag tag-{{.Type}}">{{.Type}}</span></td>
           <td>{{if .IsDefault}}Yes{{end}}</td>
           <td class="muted">{{fmtTime .UpdatedAt}}</td>
-          <td><a href="/ui/templates/{{.ID}}" class="btn btn-secondary btn-sm">Edit</a></td>
+          <td><a href="/templates/{{.ID}}" class="btn btn-secondary btn-sm">Edit</a></td>
         </tr>
       {{end}}
       </tbody>

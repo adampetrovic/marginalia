@@ -69,7 +69,7 @@ func TestUI_Dashboard_Renders(t *testing.T) {
 	srv, _ := setupTestServer(t)
 	seedTestData(t, srv)
 
-	rr := doUIRequest(srv, "/ui/")
+	rr := doUIRequest(srv, "/")
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
@@ -93,7 +93,7 @@ func TestUI_Dashboard_TabAll(t *testing.T) {
 	srv, _ := setupTestServer(t)
 	seedTestData(t, srv)
 
-	rr := doUIRequest(srv, "/ui/?tab=all")
+	rr := doUIRequest(srv, "/?tab=all")
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
@@ -110,7 +110,7 @@ func TestUI_Dashboard_TabBook(t *testing.T) {
 	srv, _ := setupTestServer(t)
 	seedTestData(t, srv)
 
-	rr := doUIRequest(srv, "/ui/?tab=book")
+	rr := doUIRequest(srv, "/?tab=book")
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
@@ -127,7 +127,7 @@ func TestUI_Dashboard_TabArticle(t *testing.T) {
 	srv, _ := setupTestServer(t)
 	seedTestData(t, srv)
 
-	rr := doUIRequest(srv, "/ui/?tab=article")
+	rr := doUIRequest(srv, "/?tab=article")
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
@@ -146,7 +146,7 @@ func TestUI_Dashboard_SearchTitle(t *testing.T) {
 	srv, _ := setupTestServer(t)
 	seedTestData(t, srv)
 
-	rr := doUIRequest(srv, "/ui/?q=Meditations")
+	rr := doUIRequest(srv, "/?q=Meditations")
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
@@ -163,7 +163,7 @@ func TestUI_Dashboard_SearchAuthor(t *testing.T) {
 	srv, _ := setupTestServer(t)
 	seedTestData(t, srv)
 
-	rr := doUIRequest(srv, "/ui/?q=Derek")
+	rr := doUIRequest(srv, "/?q=Derek")
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
@@ -181,7 +181,7 @@ func TestUI_Dashboard_SearchNoResults(t *testing.T) {
 	srv, _ := setupTestServer(t)
 	seedTestData(t, srv)
 
-	rr := doUIRequest(srv, "/ui/?q=nonexistent")
+	rr := doUIRequest(srv, "/?q=nonexistent")
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
@@ -196,7 +196,7 @@ func TestUI_Dashboard_SearchWithTab(t *testing.T) {
 	seedTestData(t, srv)
 
 	// Search "Derek" but only in books tab
-	rr := doUIRequest(srv, "/ui/?q=Derek&tab=book")
+	rr := doUIRequest(srv, "/?q=Derek&tab=book")
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
@@ -215,7 +215,7 @@ func TestUI_Dashboard_HighlightSearch(t *testing.T) {
 	srv, _ := setupTestServer(t)
 	seedTestData(t, srv)
 
-	rr := doUIRequest(srv, "/ui/?hl=rewarding")
+	rr := doUIRequest(srv, "/?hl=rewarding")
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
@@ -232,7 +232,7 @@ func TestUI_Dashboard_HighlightSearchByNote(t *testing.T) {
 	srv, _ := setupTestServer(t)
 	seedTestData(t, srv)
 
-	rr := doUIRequest(srv, "/ui/?hl=Stoicism")
+	rr := doUIRequest(srv, "/?hl=Stoicism")
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
@@ -246,7 +246,7 @@ func TestUI_Dashboard_HighlightSearchNoResults(t *testing.T) {
 	srv, _ := setupTestServer(t)
 	seedTestData(t, srv)
 
-	rr := doUIRequest(srv, "/ui/?hl=zzzznotfound")
+	rr := doUIRequest(srv, "/?hl=zzzznotfound")
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
@@ -262,7 +262,7 @@ func TestUI_DocumentDetail(t *testing.T) {
 	srv, _ := setupTestServer(t)
 	seedTestData(t, srv)
 
-	rr := doUIRequest(srv, "/ui/documents/book-1")
+	rr := doUIRequest(srv, "/documents/book-1")
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
@@ -281,7 +281,7 @@ func TestUI_DocumentDetail(t *testing.T) {
 func TestUI_DocumentDetail_NotFound(t *testing.T) {
 	srv, _ := setupTestServer(t)
 
-	rr := doUIRequest(srv, "/ui/documents/nonexistent")
+	rr := doUIRequest(srv, "/documents/nonexistent")
 	// Should redirect to dashboard
 	if rr.Code != http.StatusSeeOther {
 		t.Errorf("expected 303 redirect, got %d", rr.Code)
