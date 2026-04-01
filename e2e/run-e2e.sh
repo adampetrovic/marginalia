@@ -91,21 +91,21 @@ assert_eq "healthz returns ok" "ok" "$STATUS"
 # ── 2. Auth ─────────────────────────────────────────────────────────
 
 header "2. Authentication"
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/sources")
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/v1/sources")
 assert_eq "unauthenticated request returns 401" "401" "$HTTP_CODE"
 
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-  -H "Authorization: Bearer wrong-token" "$BASE_URL/api/sources")
+  -H "Authorization: Bearer wrong-token" "$BASE_URL/api/v1/sources")
 assert_eq "wrong token returns 401" "401" "$HTTP_CODE"
 
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-  -H "Authorization: Bearer $TOKEN" "$BASE_URL/api/sources")
+  -H "Authorization: Bearer $TOKEN" "$BASE_URL/api/v1/sources")
 assert_eq "correct token returns 200" "200" "$HTTP_CODE"
 
 # ── 3. Sources ──────────────────────────────────────────────────────
 
 header "3. Sources"
-SOURCES=$(api GET /api/sources)
+SOURCES=$(api GET /api/v1/sources)
 SOURCE_COUNT=$(echo "$SOURCES" | jq 'length')
 assert_gt "at least one source configured" 0 "$SOURCE_COUNT"
 
@@ -115,7 +115,7 @@ assert_eq "readeck source exists" "readeck" "$READECK_TYPE"
 # ── 4. Readeck sync ────────────────────────────────────────────────
 
 header "4. Readeck sync"
-SYNC_RESULT=$(api POST /api/sync)
+SYNC_RESULT=$(api POST /api/v1/sync)
 READECK_STATUS=$(echo "$SYNC_RESULT" | jq -r '.readeck.status')
 assert_eq "readeck sync completed" "completed" "$READECK_STATUS"
 
@@ -128,7 +128,7 @@ assert_eq "synced 3 highlights from mock readeck" "3" "$HLS_SYNCED"
 # ── 5. Verify documents ────────────────────────────────────────────
 
 header "5. Documents"
-DOCS=$(api GET /api/documents)
+DOCS=$(api GET /api/v1/documents)
 DOC_COUNT=$(echo "$DOCS" | jq 'length')
 assert_eq "2 documents in database" "2" "$DOC_COUNT"
 
@@ -140,7 +140,7 @@ assert_eq "document 2 title" "Why Self-Hosting Matters" "$DOC2_TITLE"
 
 # Get doc1 with highlights
 DOC1_ID=$(echo "$DOCS" | jq -r '.[] | select(.source_document_id == "bm-001") | .id')
-DOC1_FULL=$(api GET "/api/documents/$DOC1_ID")
+DOC1_FULL=$(api GET "/api/v1/documents/$DOC1_ID")
 DOC1_HL_COUNT=$(echo "$DOC1_FULL" | jq '.highlights | length')
 assert_eq "document 1 has 2 highlights" "2" "$DOC1_HL_COUNT"
 
@@ -183,7 +183,7 @@ assert_eq "koreader: 1 document ingested" "1" "$KO_DOCS"
 assert_eq "koreader: 2 highlights ingested" "2" "$KO_HLS"
 
 # Verify total documents now = 3 (2 readeck + 1 koreader)
-ALL_DOCS=$(api GET /api/documents)
+ALL_DOCS=$(api GET /api/v1/documents)
 ALL_DOC_COUNT=$(echo "$ALL_DOCS" | jq 'length')
 assert_eq "total documents now 3" "3" "$ALL_DOC_COUNT"
 
@@ -213,13 +213,13 @@ api POST /api/v2/highlights -d '{
 }' > /dev/null
 
 # Still 3 documents total
-ALL_DOCS2=$(api GET /api/documents)
+ALL_DOCS2=$(api GET /api/v1/documents)
 ALL_DOC_COUNT2=$(echo "$ALL_DOCS2" | jq 'length')
 assert_eq "no duplicate documents after re-push" "3" "$ALL_DOC_COUNT2"
 
 # Book still has 2 highlights (not 3)
 BOOK_ID=$(echo "$ALL_DOCS2" | jq -r '.[] | select(.type == "book") | .id')
-BOOK_FULL=$(api GET "/api/documents/$BOOK_ID")
+BOOK_FULL=$(api GET "/api/v1/documents/$BOOK_ID")
 BOOK_HL_COUNT=$(echo "$BOOK_FULL" | jq '.highlights | length')
 assert_eq "no duplicate highlights after re-push" "2" "$BOOK_HL_COUNT"
 
@@ -230,7 +230,7 @@ assert_eq "note updated on re-push" "Updated note" "$UPDATED_NOTE"
 # ── 8. Export API ───────────────────────────────────────────────────
 
 header "8. Export API"
-EXPORT=$(api GET /api/export)
+EXPORT=$(api GET /api/v1/export)
 EXPORT_COUNT=$(echo "$EXPORT" | jq 'length')
 assert_eq "export returns 3 documents" "3" "$EXPORT_COUNT"
 
@@ -254,28 +254,28 @@ assert_eq "all exports have sha256 checksums" "3" "$CHECKSUMS"
 header "9. Export since filter"
 
 # Use a timestamp in the past — should return all docs
-EXPORT_ALL=$(api GET "/api/export?since=2020-01-01T00:00:00Z")
+EXPORT_ALL=$(api GET "/api/v1/export?since=2020-01-01T00:00:00Z")
 EXPORT_ALL_COUNT=$(echo "$EXPORT_ALL" | jq 'length')
 assert_eq "export since past returns all 3" "3" "$EXPORT_ALL_COUNT"
 
 # Use a timestamp in the future — should return 0
-EXPORT_NONE=$(api GET "/api/export?since=2099-01-01T00:00:00Z")
+EXPORT_NONE=$(api GET "/api/v1/export?since=2099-01-01T00:00:00Z")
 EXPORT_NONE_COUNT=$(echo "$EXPORT_NONE" | jq 'length')
 assert_eq "export since future returns 0" "0" "$EXPORT_NONE_COUNT"
 
 # ── 10. Readeck re-sync (idempotency) ──────────────────────────────
 
 header "10. Readeck re-sync (idempotency)"
-SYNC2=$(api POST /api/sync/readeck)
+SYNC2=$(api POST /api/v1/sync/readeck)
 READECK_STATUS2=$(echo "$SYNC2" | jq -r '.status')
 assert_eq "re-sync completed" "completed" "$READECK_STATUS2"
 
 # Still same number of documents and highlights
-DOCS_AFTER=$(api GET /api/documents)
+DOCS_AFTER=$(api GET /api/v1/documents)
 DOC_COUNT_AFTER=$(echo "$DOCS_AFTER" | jq 'length')
 assert_eq "no duplicate documents after re-sync" "3" "$DOC_COUNT_AFTER"
 
-HIGHLIGHTS_AFTER=$(api GET /api/highlights)
+HIGHLIGHTS_AFTER=$(api GET /api/v1/highlights)
 HL_COUNT_AFTER=$(echo "$HIGHLIGHTS_AFTER" | jq 'length')
 assert_eq "no duplicate highlights after re-sync" "5" "$HL_COUNT_AFTER"
 
@@ -284,12 +284,12 @@ assert_eq "no duplicate highlights after re-sync" "5" "$HL_COUNT_AFTER"
 header "11. Template management"
 
 # List templates (should be empty — defaults are built-in, not stored)
-TEMPLATES=$(api GET /api/templates)
+TEMPLATES=$(api GET /api/v1/templates)
 TPL_COUNT=$(echo "$TEMPLATES" | jq 'length')
 assert_eq "no custom templates initially" "0" "$TPL_COUNT"
 
 # Create a custom template
-CREATE_RESULT=$(api POST /api/templates -d '{
+CREATE_RESULT=$(api POST /api/v1/templates -d '{
   "id": "custom-article",
   "name": "Custom Article Template",
   "type": "article",
@@ -301,7 +301,7 @@ CREATED_ID=$(echo "$CREATE_RESULT" | jq -r '.id')
 assert_eq "created custom template" "custom-article" "$CREATED_ID"
 
 # Export should now use the custom template for articles
-EXPORT_CUSTOM=$(api GET /api/export)
+EXPORT_CUSTOM=$(api GET /api/v1/export)
 CUSTOM_ARTICLE=$(echo "$EXPORT_CUSTOM" | jq -r '.[] | select(.title == "The Art of Focused Reading") | .content')
 assert_contains "custom template applied: heading" "# The Art of Focused Reading" "$CUSTOM_ARTICLE"
 assert_contains "custom template applied: author" "by Alice Writer" "$CUSTOM_ARTICLE"
@@ -310,7 +310,7 @@ assert_contains "custom template applied: author" "by Alice Writer" "$CUSTOM_ART
 ARTICLE_CHECKSUM_1=$(echo "$EXPORT_CUSTOM" | jq -r '.[] | select(.title == "The Art of Focused Reading") | .checksum')
 
 # Update the template
-api PUT "/api/templates/custom-article" -d '{
+api PUT "/api/v1/templates/custom-article" -d '{
   "name": "Custom Article Template v2",
   "type": "article",
   "page_template": "## {{ title }} — {{ author }}\n{% for highlight in highlights %}- {{ highlight.text }}\n{% endfor %}",
@@ -319,7 +319,7 @@ api PUT "/api/templates/custom-article" -d '{
 }' > /dev/null
 
 # Export again — content and checksum should change
-EXPORT_UPDATED=$(api GET /api/export)
+EXPORT_UPDATED=$(api GET /api/v1/export)
 UPDATED_ARTICLE=$(echo "$EXPORT_UPDATED" | jq -r '.[] | select(.title == "The Art of Focused Reading") | .content')
 assert_contains "updated template applied" "## The Art of Focused Reading — Alice Writer" "$UPDATED_ARTICLE"
 
@@ -333,7 +333,7 @@ fi
 # ── 12. Template preview ───────────────────────────────────────────
 
 header "12. Template preview"
-PREVIEW=$(api POST /api/templates/preview -d '{
+PREVIEW=$(api POST /api/v1/templates/preview -d '{
   "page_template": "Preview: {{ title }} ({{ num_highlights }} highlights)",
   "type": "book"
 }')
@@ -344,7 +344,7 @@ assert_contains "preview has highlight count" "highlights)" "$PREVIEW_CONTENT"
 # ── 13. Sync status / history ───────────────────────────────────────
 
 header "13. Sync status"
-SYNC_STATUS=$(api GET /api/sync/status)
+SYNC_STATUS=$(api GET /api/v1/sync/status)
 LOG_COUNT=$(echo "$SYNC_STATUS" | jq 'length')
 assert_gt "sync logs recorded" 0 "$LOG_COUNT"
 

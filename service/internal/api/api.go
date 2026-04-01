@@ -54,41 +54,43 @@ func (s *Server) buildRouter() chi.Router {
 	// Health check (unauthenticated)
 	r.Get("/healthz", s.handleHealthz)
 
-	// Web UI (authenticated)
-	s.registerUIRoutes(r)
-
 	// Authenticated API routes
 	r.Route("/api", func(r chi.Router) {
 		r.Use(s.authMiddleware)
 
-		// Sources
-		r.Get("/sources", s.handleListSources)
+		r.Route("/v1", func(r chi.Router) {
+			// Sources
+			r.Get("/sources", s.handleListSources)
 
-		// Sync
-		r.Post("/sync", s.handleSyncAll)
-		r.Post("/sync/{source}", s.handleSyncSource)
-		r.Get("/sync/status", s.handleSyncStatus)
+			// Sync
+			r.Post("/sync", s.handleSyncAll)
+			r.Post("/sync/{source}", s.handleSyncSource)
+			r.Get("/sync/status", s.handleSyncStatus)
 
-		// Documents & Highlights
-		r.Get("/documents", s.handleListDocuments)
-		r.Get("/documents/{id}", s.handleGetDocument)
-		r.Get("/highlights", s.handleListHighlights)
+			// Documents & Highlights
+			r.Get("/documents", s.handleListDocuments)
+			r.Get("/documents/{id}", s.handleGetDocument)
+			r.Get("/highlights", s.handleListHighlights)
 
-		// Templates
-		r.Get("/templates", s.handleListTemplates)
-		r.Get("/templates/{id}", s.handleGetTemplate)
-		r.Post("/templates", s.handleCreateTemplate)
-		r.Put("/templates/{id}", s.handleUpdateTemplate)
-		r.Post("/templates/preview", s.handlePreviewTemplate)
+			// Templates
+			r.Get("/templates", s.handleListTemplates)
+			r.Get("/templates/{id}", s.handleGetTemplate)
+			r.Post("/templates", s.handleCreateTemplate)
+			r.Put("/templates/{id}", s.handleUpdateTemplate)
+			r.Post("/templates/preview", s.handlePreviewTemplate)
 
-		// Export
-		r.Get("/export", s.handleExport)
-		r.Get("/export/documents/{id}", s.handleExportDocument)
+			// Export
+			r.Get("/export", s.handleExport)
+			r.Get("/export/documents/{id}", s.handleExportDocument)
+		})
 
-		// Readwise-compatible endpoints (for KOReader)
+		// Readwise-compatible endpoints (for KOReader) — kept at /api/v2 for compatibility
 		r.Post("/v2/highlights", s.handleReadwiseHighlights)
 		r.Get("/v2/auth", s.handleReadwiseAuth)
 	})
+
+	// Web UI (authenticated, served at root)
+	s.registerUIRoutes(r)
 
 	return r
 }
@@ -141,7 +143,8 @@ func (s *Server) authMiddleware(next http.Handler) http.Handler {
 
 		if token == "" || token != s.cfg.APIToken {
 			// For UI routes, show a simple message instead of JSON
-			if len(r.URL.Path) >= 3 && r.URL.Path[:3] == "/ui" {
+			isAPIRoute := len(r.URL.Path) >= 4 && r.URL.Path[:4] == "/api"
+			if !isAPIRoute {
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
 				w.WriteHeader(http.StatusUnauthorized)
 				_, _ = fmt.Fprintf(w, `<html><body style="font-family: sans-serif; padding: 2rem; background: #0f1117; color: #e4e4e7;">

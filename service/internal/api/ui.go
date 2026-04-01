@@ -13,9 +13,9 @@ import (
 	"github.com/adampetrovic/marginalia/service/internal/ui"
 )
 
-// registerUIRoutes adds the web UI routes to the router.
+// registerUIRoutes adds the web UI routes to the router (served at root).
 func (s *Server) registerUIRoutes(r chi.Router) {
-	r.Route("/ui", func(r chi.Router) {
+	r.Group(func(r chi.Router) {
 		r.Use(s.authMiddleware)
 
 		r.Get("/", s.uiDashboard)
@@ -46,22 +46,53 @@ func (s *Server) uiDashboard(w http.ResponseWriter, r *http.Request) {
 	var sources []models.Source
 	s.db.Find(&sources)
 
-	var recentDocs []models.Document
-	s.db.Preload("Highlights").Order("updated_at DESC").Limit(10).Find(&recentDocs)
+	// Tab filter
+	tab := r.URL.Query().Get("tab") // "all", "book", "article"
+	if tab == "" {
+		tab = "all"
+	}
+
+	// Title search
+	titleQuery := r.URL.Query().Get("q")
+
+	// Build document query
+	docQ := s.db.Preload("Highlights").Order("updated_at DESC")
+	if tab != "all" {
+		docQ = docQ.Where("type = ?", tab)
+	}
+	if titleQuery != "" {
+		docQ = docQ.Where("title LIKE ? OR author LIKE ?", "%"+titleQuery+"%", "%"+titleQuery+"%")
+	}
+	var docs []models.Document
+	docQ.Limit(50).Find(&docs)
+
+	// Highlight search
+	highlightQuery := r.URL.Query().Get("hl")
+	var matchedHighlights []models.Highlight
+	if highlightQuery != "" {
+		s.db.Preload("Document").
+			Where("text LIKE ? OR note LIKE ?", "%"+highlightQuery+"%", "%"+highlightQuery+"%").
+			Order("created_at DESC").Limit(50).
+			Find(&matchedHighlights)
+	}
 
 	// Last sync time
 	var lastLog models.SyncLog
 	s.db.Where("status = ?", "completed").Order("completed_at DESC").First(&lastLog)
 
 	renderPage(w, "dashboard.html", map[string]interface{}{
-		"Nav":             "dashboard",
-		"Title":           "Dashboard",
-		"BookCount":       bookCount,
-		"ArticleCount":    articleCount,
-		"HighlightCount":  hlCount,
-		"Sources":         sources,
-		"RecentDocuments": recentDocs,
-		"LastSync":        lastLog,
+		"Nav":               "dashboard",
+		"Title":             "Highlights",
+		"BookCount":         bookCount,
+		"ArticleCount":      articleCount,
+		"HighlightCount":    hlCount,
+		"Sources":           sources,
+		"Documents":         docs,
+		"LastSync":          lastLog,
+		"Tab":               tab,
+		"Query":             titleQuery,
+		"HighlightQuery":    highlightQuery,
+		"MatchedHighlights": matchedHighlights,
 	})
 }
 
@@ -94,7 +125,7 @@ func (s *Server) uiDocumentDetail(w http.ResponseWriter, r *http.Request) {
 	if err := s.db.Preload("Highlights", func(db *gorm.DB) *gorm.DB {
 		return db.Order("location_sort_key ASC, created_at ASC")
 	}).Preload("Source").First(&doc, "id = ?", id).Error; err != nil {
-		http.Redirect(w, r, "/ui/", http.StatusSeeOther)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
@@ -163,14 +194,14 @@ func (s *Server) uiTemplateCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/ui/templates", http.StatusSeeOther)
+	http.Redirect(w, r, "/templates", http.StatusSeeOther)
 }
 
 func (s *Server) uiTemplateEdit(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var tmpl models.Template
 	if err := s.db.First(&tmpl, "id = ?", id).Error; err != nil {
-		http.Redirect(w, r, "/ui/templates", http.StatusSeeOther)
+		http.Redirect(w, r, "/templates", http.StatusSeeOther)
 		return
 	}
 
@@ -187,7 +218,7 @@ func (s *Server) uiTemplateUpdate(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var tmpl models.Template
 	if err := s.db.First(&tmpl, "id = ?", id).Error; err != nil {
-		http.Redirect(w, r, "/ui/templates", http.StatusSeeOther)
+		http.Redirect(w, r, "/templates", http.StatusSeeOther)
 		return
 	}
 
@@ -218,7 +249,7 @@ func (s *Server) uiTemplateUpdate(w http.ResponseWriter, r *http.Request) {
 		"is_default":    r.FormValue("is_default") == "on",
 	})
 
-	http.Redirect(w, r, fmt.Sprintf("/ui/templates/%s?saved=Template+saved", id), http.StatusSeeOther)
+	http.Redirect(w, r, fmt.Sprintf("/templates/%s?saved=Template+saved", id), http.StatusSeeOther)
 }
 
 func (s *Server) uiTemplateValidate(w http.ResponseWriter, r *http.Request) {

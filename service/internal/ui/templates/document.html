@@ -1,6 +1,6 @@
 {{define "content"}}
 <div style="margin-bottom:1.5rem">
-  <a href="/ui/" style="font-size:0.8125rem; color:var(--secondary);">&larr; All documents</a>
+  <a href="/" style="font-size:0.8125rem; color:var(--secondary);">&larr; All documents</a>
 </div>
 
 <div style="margin-bottom:2rem">
@@ -16,6 +16,9 @@
 {{if .Document.Highlights}}
 <div class="highlights">
   {{range .Document.Highlights}}
+  {{if isHeading .Tags}}
+  <div class="hl-heading hl-{{headingTag .Tags}}">{{.Text}}</div>
+  {{else}}
   <div class="hl">
     <blockquote class="hl-text">{{.Text}}</blockquote>
     {{if .Note}}<div class="hl-note">{{.Note}}</div>{{end}}
@@ -27,6 +30,7 @@
     </div>
     {{end}}
   </div>
+  {{end}}
   {{end}}
 </div>
 {{else}}
@@ -48,6 +52,14 @@
     margin-top: 0.25rem; font-size: 0.75rem; color: var(--tertiary);
     font-family: var(--mono);
   }
+  .hl-heading {
+    font-weight: 600; color: var(--text); margin-top: 1.5rem; margin-bottom: 0.25rem;
+  }
+  .hl-heading:first-child { margin-top: 0; }
+  .hl-h1 { font-size: 1.125rem; }
+  .hl-h2 { font-size: 1rem; }
+  .hl-h3 { font-size: 0.9375rem; color: var(--secondary); }
+  .hl-h4, .hl-h5 { font-size: 0.875rem; color: var(--secondary); }
 
   @media (min-width: 640px) {
     .hl { padding-left: 1.25rem; }

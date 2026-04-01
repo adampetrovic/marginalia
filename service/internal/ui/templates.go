@@ -7,7 +7,10 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"strings"
 	"time"
+
+	"github.com/adampetrovic/marginalia/service/internal/models"
 )
 
 //go:embed templates/*.html
@@ -50,6 +53,22 @@ var funcs = template.FuncMap{
 			return "—"
 		}
 		return t.Format("2 Jan 2006 15:04")
+	},
+	"isHeading": func(tags models.JSONStringArray) bool {
+		for _, t := range tags {
+			if strings.HasPrefix(t, "h") && len(t) == 2 && t[1] >= '1' && t[1] <= '5' {
+				return true
+			}
+		}
+		return false
+	},
+	"headingTag": func(tags models.JSONStringArray) string {
+		for _, t := range tags {
+			if strings.HasPrefix(t, "h") && len(t) == 2 && t[1] >= '1' && t[1] <= '5' {
+				return t
+			}
+		}
+		return ""
 	},
 }
 
