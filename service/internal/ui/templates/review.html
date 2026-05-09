@@ -1,0 +1,36 @@
+{{define "content"}}
+<h1>Daily Review</h1>
+<p class="muted" style="margin-top:-0.75rem; margin-bottom:1.5rem; max-width:58ch">
+  Resurface highlights on an expanding schedule. Choose how well the idea landed today and Marginalia will decide when to bring it back.
+</p>
+
+{{if .Error}}
+<div class="msg-error" style="margin-bottom:1rem">{{.Error}}</div>
+{{end}}
+
+{{template "review-card" .Card}}
+
+<style>
+  .review-shell { display: grid; gap: 1rem; }
+  .review-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1rem; }
+  .review-card { background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--radius) * 2); padding: 1.25rem; }
+  .review-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; color: var(--secondary); font-size: 0.8125rem; margin-bottom: 1rem; }
+  .review-meta a { color: var(--text); font-weight: 500; }
+  .review-text { font-size: 1.125rem; line-height: 1.75; letter-spacing: -0.01em; color: var(--text); margin-bottom: 1rem; }
+  .review-note { border-left: 2px solid var(--accent); padding-left: 0.875rem; color: var(--accent-hover); font-size: 0.9375rem; margin-bottom: 1rem; }
+  .review-details { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem; }
+  .review-pill { display: inline-flex; align-items: center; padding: 0.2rem 0.5rem; border-radius: 999px; background: var(--bg); color: var(--secondary); font-size: 0.75rem; border: 1px solid var(--border-light); }
+  .review-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 1rem; }
+  .btn-review-again { color: #991b1b; border-color: #fecaca; background: #fef2f2; }
+  .btn-review-hard { color: #92400e; border-color: #fed7aa; background: #fff7ed; }
+  .btn-review-good { color: #166534; border-color: #bbf7d0; background: #f0fdf4; }
+  .btn-review-easy { color: #1d4ed8; border-color: #bfdbfe; background: #eff6ff; }
+  .btn-review-archive { margin-left: auto; color: var(--secondary); }
+  .review-empty { background: var(--surface); border: 1px dashed var(--border); border-radius: calc(var(--radius) * 2); padding: 2.25rem 1.25rem; text-align: center; }
+  .review-empty h2 { color: var(--text); text-transform: none; letter-spacing: -0.01em; font-size: 1rem; margin-bottom: 0.35rem; }
+  @media (max-width: 640px) {
+    .review-stats { grid-template-columns: 1fr; }
+    .btn-review-archive { margin-left: 0; }
+  }
+</style>
+{{end}}

@@ -72,6 +72,10 @@ func (s *Server) buildRouter() chi.Router {
 			r.Get("/documents/{id}", s.handleGetDocument)
 			r.Get("/highlights", s.handleListHighlights)
 
+			// Daily review
+			r.Get("/review", s.handleGetReview)
+			r.Post("/review/{id}", s.handleReviewAction)
+
 			// Templates
 			r.Get("/templates", s.handleListTemplates)
 			r.Get("/templates/{id}", s.handleGetTemplate)
@@ -486,5 +490,3 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]string{"error": message})
 }
-
-

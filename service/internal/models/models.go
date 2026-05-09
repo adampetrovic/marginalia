@@ -67,7 +67,7 @@ func (j *JSONMap) Scan(value interface{}) error {
 // Source represents a configured highlight input source (e.g. readeck, koreader).
 type Source struct {
 	ID           string     `gorm:"primaryKey" json:"id"`
-	Type         string     `gorm:"not null" json:"type"`     // readeck, koreader
+	Type         string     `gorm:"not null" json:"type"` // readeck, koreader
 	Name         string     `gorm:"not null" json:"name"`
 	LastSyncedAt *time.Time `json:"last_synced_at"`
 	CreatedAt    time.Time  `json:"created_at"`
@@ -79,22 +79,22 @@ type Source struct {
 
 // Document represents a book, article, podcast, or tweet.
 type Document struct {
-	ID               string          `gorm:"primaryKey" json:"id"`
-	SourceID         string          `gorm:"not null;index;uniqueIndex:idx_source_doc" json:"source_id"`
-	SourceDocumentID string          `gorm:"not null;uniqueIndex:idx_source_doc" json:"source_document_id"`
-	Type             string          `gorm:"not null;index" json:"type"` // book, article, podcast, tweet
-	Title            string          `gorm:"not null" json:"title"`
-	Author           string          `json:"author"`
-	URL              string          `json:"url"`
-	ImageURL         string          `json:"image_url"`
-	SourceURL        string          `json:"source_url"`
-	Category         string          `json:"category"`
-	Tags             JSONStringArray `gorm:"type:text" json:"tags"`
-	Metadata         JSONMap         `gorm:"type:text" json:"metadata"`
-	LastHighlightedAt *time.Time     `json:"last_highlighted_at"`
-	LastSyncedAt     *time.Time      `json:"last_synced_at"`
-	CreatedAt        time.Time       `gorm:"index" json:"created_at"`
-	UpdatedAt        time.Time       `gorm:"index" json:"updated_at"`
+	ID                string          `gorm:"primaryKey" json:"id"`
+	SourceID          string          `gorm:"not null;index;uniqueIndex:idx_source_doc" json:"source_id"`
+	SourceDocumentID  string          `gorm:"not null;uniqueIndex:idx_source_doc" json:"source_document_id"`
+	Type              string          `gorm:"not null;index" json:"type"` // book, article, podcast, tweet
+	Title             string          `gorm:"not null" json:"title"`
+	Author            string          `json:"author"`
+	URL               string          `json:"url"`
+	ImageURL          string          `json:"image_url"`
+	SourceURL         string          `json:"source_url"`
+	Category          string          `json:"category"`
+	Tags              JSONStringArray `gorm:"type:text" json:"tags"`
+	Metadata          JSONMap         `gorm:"type:text" json:"metadata"`
+	LastHighlightedAt *time.Time      `json:"last_highlighted_at"`
+	LastSyncedAt      *time.Time      `json:"last_synced_at"`
+	CreatedAt         time.Time       `gorm:"index" json:"created_at"`
+	UpdatedAt         time.Time       `gorm:"index" json:"updated_at"`
 
 	Source     Source      `gorm:"foreignKey:SourceID" json:"-"`
 	Highlights []Highlight `gorm:"foreignKey:DocumentID" json:"highlights,omitempty"`
@@ -120,7 +120,26 @@ type Highlight struct {
 	CreatedAt         time.Time       `json:"created_at"`
 	UpdatedAt         time.Time       `json:"updated_at"`
 
-	Document Document `gorm:"foreignKey:DocumentID" json:"-"`
+	Document    Document     `gorm:"foreignKey:DocumentID" json:"-"`
+	ReviewState *ReviewState `gorm:"foreignKey:HighlightID" json:"review_state,omitempty"`
+}
+
+// ReviewState tracks spaced-repetition scheduling for a highlight.
+type ReviewState struct {
+	HighlightID    string     `gorm:"primaryKey" json:"highlight_id"`
+	EaseFactor     float64    `gorm:"not null;default:2.5" json:"ease_factor"`
+	IntervalDays   int        `gorm:"not null;default:0" json:"interval_days"`
+	Repetitions    int        `gorm:"not null;default:0" json:"repetitions"`
+	Lapses         int        `gorm:"not null;default:0" json:"lapses"`
+	DueAt          *time.Time `gorm:"index" json:"due_at"`
+	LastReviewedAt *time.Time `gorm:"index" json:"last_reviewed_at"`
+	LastRating     string     `json:"last_rating"`
+	Suspended      bool       `gorm:"not null;default:false;index" json:"suspended"`
+	Favorite       bool       `gorm:"not null;default:false" json:"favorite"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+
+	Highlight Highlight `gorm:"foreignKey:HighlightID" json:"-"`
 }
 
 // Template stores rendering templates for export.

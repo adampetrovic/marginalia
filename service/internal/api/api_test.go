@@ -159,6 +159,93 @@ func TestGetDocument_NotFound(t *testing.T) {
 	}
 }
 
+// --- Review ---
+
+func TestReviewQueueIncludesNewHighlights(t *testing.T) {
+	srv, db := setupTestServer(t)
+
+	db.Create(&models.Source{ID: "test-src", Type: "readeck", Name: "Test"})
+	db.Create(&models.Document{ID: "doc-1", SourceID: "test-src", SourceDocumentID: "ext-1", Type: "article", Title: "Test Article", Tags: models.JSONStringArray{}, Metadata: models.JSONMap{}})
+	db.Create(&models.Highlight{ID: "hl-1", DocumentID: "doc-1", SourceHighlightID: "ext-hl-1", Text: "Review this"})
+
+	rr := doRequest(srv, "GET", "/api/v1/review", nil, testToken)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	var res reviewResponse
+	_ = json.NewDecoder(rr.Body).Decode(&res)
+	if res.Stats.DueCount != 1 {
+		t.Errorf("expected 1 due highlight, got %d", res.Stats.DueCount)
+	}
+	if res.Stats.NewCount != 1 {
+		t.Errorf("expected 1 new highlight, got %d", res.Stats.NewCount)
+	}
+	if res.Highlight == nil || res.Highlight.ID != "hl-1" {
+		t.Fatalf("expected hl-1 as next review, got %#v", res.Highlight)
+	}
+}
+
+func TestReviewActionSchedulesHighlight(t *testing.T) {
+	srv, db := setupTestServer(t)
+
+	db.Create(&models.Source{ID: "test-src", Type: "readeck", Name: "Test"})
+	db.Create(&models.Document{ID: "doc-1", SourceID: "test-src", SourceDocumentID: "ext-1", Type: "article", Title: "Test Article", Tags: models.JSONStringArray{}, Metadata: models.JSONMap{}})
+	db.Create(&models.Highlight{ID: "hl-1", DocumentID: "doc-1", SourceHighlightID: "ext-hl-1", Text: "Review this"})
+
+	rr := doRequest(srv, "POST", "/api/v1/review/hl-1", map[string]string{"rating": "good"}, testToken)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	var state models.ReviewState
+	_ = json.NewDecoder(rr.Body).Decode(&state)
+	if state.IntervalDays != 1 {
+		t.Errorf("first good review should be due in 1 day, got %d", state.IntervalDays)
+	}
+	if state.Repetitions != 1 {
+		t.Errorf("expected 1 repetition, got %d", state.Repetitions)
+	}
+	if state.DueAt == nil {
+		t.Fatal("expected due date")
+	}
+
+	rr = doRequest(srv, "GET", "/api/v1/review", nil, testToken)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	var res reviewResponse
+	_ = json.NewDecoder(rr.Body).Decode(&res)
+	if res.Stats.DueCount != 0 {
+		t.Errorf("expected no due highlights after scheduling, got %d", res.Stats.DueCount)
+	}
+	if res.Highlight != nil {
+		t.Errorf("expected no next highlight, got %#v", res.Highlight)
+	}
+}
+
+func TestReviewActionArchivesHighlight(t *testing.T) {
+	srv, db := setupTestServer(t)
+
+	db.Create(&models.Source{ID: "test-src", Type: "readeck", Name: "Test"})
+	db.Create(&models.Document{ID: "doc-1", SourceID: "test-src", SourceDocumentID: "ext-1", Type: "article", Title: "Test Article", Tags: models.JSONStringArray{}, Metadata: models.JSONMap{}})
+	db.Create(&models.Highlight{ID: "hl-1", DocumentID: "doc-1", SourceHighlightID: "ext-hl-1", Text: "Archive this"})
+
+	rr := doRequest(srv, "POST", "/api/v1/review/hl-1", map[string]string{"rating": "archive"}, testToken)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	var state models.ReviewState
+	_ = json.NewDecoder(rr.Body).Decode(&state)
+	if !state.Suspended {
+		t.Error("expected archived review state to be suspended")
+	}
+	if state.DueAt != nil {
+		t.Error("expected archived review state to have no due date")
+	}
+}
+
 // --- Templates ---
 
 func TestTemplateCRUD(t *testing.T) {

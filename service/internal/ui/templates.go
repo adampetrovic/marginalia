@@ -81,10 +81,11 @@ var pages map[string]*template.Template
 var partials *template.Template
 
 func init() {
-	shared := []string{"templates/layout.html"}
+	shared := []string{"templates/layout.html", "templates/partials.html"}
 	pageFiles := []string{
 		"templates/dashboard.html",
 		"templates/document.html",
+		"templates/review.html",
 		"templates/templates.html",
 		"templates/template_edit.html",
 		"templates/history.html",
@@ -92,7 +93,8 @@ func init() {
 
 	pages = make(map[string]*template.Template, len(pageFiles))
 	for _, pf := range pageFiles {
-		files := []string{shared[0], pf}
+		files := append([]string{}, shared...)
+		files = append(files, pf)
 		t := template.Must(
 			template.New("").Funcs(funcs).ParseFS(templateFS, files...),
 		)

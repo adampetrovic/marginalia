@@ -8,6 +8,80 @@
 <div class="msg-error" style="margin-bottom:1rem">Sync failed: {{.}}</div>
 {{end}}
 
+{{define "review-card"}}
+<div id="review-card" class="review-shell">
+  <div class="review-stats">
+    <div class="stat">
+      <div class="stat-value">{{.Stats.DueCount}}</div>
+      <div class="stat-label">Due now</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">{{.Stats.NewCount}}</div>
+      <div class="stat-label">New</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">{{.Stats.ReviewedToday}}</div>
+      <div class="stat-label">Reviewed today</div>
+    </div>
+  </div>
+
+  {{if .Error}}<div class="msg-error" style="margin-bottom:1rem">{{.Error}}</div>{{end}}
+  {{if .LastAction}}<div class="msg-success" style="margin-bottom:1rem">{{.LastAction}}</div>{{end}}
+
+  {{if .Highlight}}
+  <article class="review-card">
+    <div class="review-meta">
+      <a href="/documents/{{.Highlight.DocumentID}}">{{.Highlight.Document.Title}}</a>
+      {{if .Highlight.Document.Author}}<span>by {{.Highlight.Document.Author}}</span>{{end}}
+      {{if .Highlight.Location}}<span class="mono">{{.Highlight.LocationType}} {{.Highlight.Location}}</span>{{end}}
+    </div>
+
+    <div class="review-text">{{.Highlight.Text}}</div>
+    {{if .Highlight.Note}}<div class="review-note">{{.Highlight.Note}}</div>{{end}}
+
+    <div class="review-details">
+      {{if .State}}
+      <span class="review-pill">interval {{.State.IntervalDays}}d</span>
+      <span class="review-pill">reps {{.State.Repetitions}}</span>
+      <span class="review-pill">ease {{printf "%.2f" .State.EaseFactor}}</span>
+      {{else}}
+      <span class="review-pill">new highlight</span>
+      {{end}}
+      {{if .Highlight.HighlightedAt}}<span class="review-pill">highlighted {{timeAgo .Highlight.HighlightedAt}}</span>{{end}}
+    </div>
+
+    <div class="review-actions">
+      <form hx-post="/review/{{.Highlight.ID}}" hx-target="#review-card" hx-swap="outerHTML" hx-disabled-elt="button">
+        <input type="hidden" name="rating" value="again">
+        <button class="btn btn-secondary btn-review-again" type="submit">Again</button>
+      </form>
+      <form hx-post="/review/{{.Highlight.ID}}" hx-target="#review-card" hx-swap="outerHTML" hx-disabled-elt="button">
+        <input type="hidden" name="rating" value="hard">
+        <button class="btn btn-secondary btn-review-hard" type="submit">Hard</button>
+      </form>
+      <form hx-post="/review/{{.Highlight.ID}}" hx-target="#review-card" hx-swap="outerHTML" hx-disabled-elt="button">
+        <input type="hidden" name="rating" value="good">
+        <button class="btn btn-secondary btn-review-good" type="submit">Good</button>
+      </form>
+      <form hx-post="/review/{{.Highlight.ID}}" hx-target="#review-card" hx-swap="outerHTML" hx-disabled-elt="button">
+        <input type="hidden" name="rating" value="easy">
+        <button class="btn btn-secondary btn-review-easy" type="submit">Easy</button>
+      </form>
+      <form hx-post="/review/{{.Highlight.ID}}" hx-target="#review-card" hx-swap="outerHTML" hx-disabled-elt="button" class="btn-review-archive">
+        <input type="hidden" name="rating" value="archive">
+        <button class="btn btn-secondary" type="submit">Archive</button>
+      </form>
+    </div>
+  </article>
+  {{else}}
+  <div class="review-empty">
+    <h2>Nothing due right now</h2>
+    <p class="muted">You are caught up. New highlights and scheduled reviews will appear here when they are due.</p>
+  </div>
+  {{end}}
+</div>
+{{end}}
+
 {{define "validation-ok"}}
 <div class="msg-success">Template is valid</div>
 {{end}}
