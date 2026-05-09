@@ -21,6 +21,9 @@ func (s *Server) registerUIRoutes(r chi.Router) {
 		r.Get("/", s.uiDashboard)
 		r.Post("/sync", s.uiSyncAll)
 
+		r.Get("/review", s.uiReview)
+		r.Post("/review/{id}", s.uiReviewAction)
+
 		r.Get("/templates", s.uiTemplateList)
 		r.Get("/templates/new", s.uiTemplateNew)
 		r.Post("/templates/new", s.uiTemplateCreate)
@@ -134,6 +137,79 @@ func (s *Server) uiDocumentDetail(w http.ResponseWriter, r *http.Request) {
 		"Title":    doc.Title,
 		"Document": doc,
 	})
+}
+
+// --- Review ---
+
+func (s *Server) uiReview(w http.ResponseWriter, r *http.Request) {
+	card, err := s.reviewCardData(time.Now(), "")
+	if err != nil {
+		renderPage(w, "review.html", map[string]interface{}{
+			"Nav":   "review",
+			"Title": "Daily Review",
+			"Error": err.Error(),
+		})
+		return
+	}
+
+	renderPage(w, "review.html", map[string]interface{}{
+		"Nav":   "review",
+		"Title": "Daily Review",
+		"Card":  card,
+	})
+}
+
+func (s *Server) uiReviewAction(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if err := r.ParseForm(); err != nil {
+		renderPartial(w, "review-card", reviewCardData{Error: "Invalid review action"})
+		return
+	}
+
+	rating := r.FormValue("rating")
+	now := time.Now()
+	state, err := s.applyReviewAction(id, rating, now)
+	if err != nil {
+		card, cardErr := s.reviewCardData(now, "")
+		if cardErr != nil {
+			card = reviewCardData{}
+		}
+		card.Error = err.Error()
+		renderPartial(w, "review-card", card)
+		return
+	}
+
+	card, err := s.reviewCardData(now, reviewActionMessage(state))
+	if err != nil {
+		renderPartial(w, "review-card", reviewCardData{Error: err.Error()})
+		return
+	}
+	renderPartial(w, "review-card", card)
+}
+
+func (s *Server) reviewCardData(now time.Time, lastAction string) (reviewCardData, error) {
+	highlight, state, err := s.nextDueReview(now)
+	if err != nil {
+		return reviewCardData{}, err
+	}
+	stats, err := s.reviewStats(now)
+	if err != nil {
+		return reviewCardData{}, err
+	}
+	return reviewCardData{Highlight: highlight, State: state, Stats: stats, LastAction: lastAction}, nil
+}
+
+func reviewActionMessage(state *models.ReviewState) string {
+	if state == nil {
+		return "Review saved"
+	}
+	if state.Suspended {
+		return "Archived from future reviews"
+	}
+	if state.IntervalDays == 1 {
+		return "Review saved — due again tomorrow"
+	}
+	return fmt.Sprintf("Review saved — due again in %d days", state.IntervalDays)
 }
 
 // --- Templates ---

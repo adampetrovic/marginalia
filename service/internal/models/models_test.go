@@ -27,7 +27,7 @@ func TestAutoMigrate(t *testing.T) {
 	db := setupTestDB(t)
 
 	// Verify all tables exist
-	tables := []string{"sources", "documents", "highlights", "templates", "sync_logs"}
+	tables := []string{"sources", "documents", "highlights", "review_states", "templates", "sync_logs"}
 	for _, table := range tables {
 		if !db.Migrator().HasTable(table) {
 			t.Errorf("expected table %q to exist", table)
@@ -151,6 +151,31 @@ func TestHighlightDeduplication(t *testing.T) {
 	err := db.Create(&hl2).Error
 	if err == nil {
 		t.Error("expected unique constraint violation for duplicate source_highlight_id within document")
+	}
+}
+
+func TestReviewStateBelongsToHighlight(t *testing.T) {
+	db := setupTestDB(t)
+
+	db.Create(&Source{ID: "src-1", Type: "readeck", Name: "Test"})
+	db.Create(&Document{ID: "doc-1", SourceID: "src-1", SourceDocumentID: "ext-1", Type: "book", Title: "Test Book"})
+	db.Create(&Highlight{ID: "hl-1", DocumentID: "doc-1", SourceHighlightID: "ext-hl-1", Text: "A durable idea", SyncedAt: time.Now()})
+
+	due := time.Now().AddDate(0, 0, 3)
+	state := ReviewState{HighlightID: "hl-1", EaseFactor: 2.5, IntervalDays: 3, Repetitions: 2, DueAt: &due}
+	if err := db.Create(&state).Error; err != nil {
+		t.Fatalf("failed to create review state: %v", err)
+	}
+
+	var hl Highlight
+	if err := db.Preload("ReviewState").First(&hl, "id = ?", "hl-1").Error; err != nil {
+		t.Fatalf("failed to load highlight: %v", err)
+	}
+	if hl.ReviewState == nil {
+		t.Fatal("expected review state to preload")
+	}
+	if hl.ReviewState.IntervalDays != 3 {
+		t.Errorf("expected interval 3, got %d", hl.ReviewState.IntervalDays)
 	}
 }
 

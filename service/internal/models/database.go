@@ -46,6 +46,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&Source{},
 		&Document{},
 		&Highlight{},
+		&ReviewState{},
 		&Template{},
 		&SyncLog{},
 	)

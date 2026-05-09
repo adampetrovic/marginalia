@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -58,6 +59,15 @@ func seedTestData(t *testing.T, srv *Server) {
 func doUIRequest(srv *Server, path string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest("GET", path, nil)
 	req.Header.Set("Authorization", "Bearer "+testToken)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+	return rr
+}
+
+func doUIPost(srv *Server, path string, form url.Values) *httptest.ResponseRecorder {
+	req := httptest.NewRequest("POST", path, strings.NewReader(form.Encode()))
+	req.Header.Set("Authorization", "Bearer "+testToken)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 	return rr
@@ -253,6 +263,64 @@ func TestUI_Dashboard_HighlightSearchNoResults(t *testing.T) {
 	body := rr.Body.String()
 	if !strings.Contains(body, "No highlights matching") {
 		t.Error("expected empty state for no highlight results")
+	}
+}
+
+// --- Review ---
+
+func TestUI_Review_RendersDueHighlight(t *testing.T) {
+	srv, _ := setupTestServer(t)
+	seedTestData(t, srv)
+
+	rr := doUIRequest(srv, "/review")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "Daily Review") {
+		t.Error("review page should show title")
+	}
+	if !strings.Contains(body, "The most rewarding things in life take years") {
+		t.Error("review page should show a due highlight")
+	}
+	if !strings.Contains(body, "Again") || !strings.Contains(body, "Good") || !strings.Contains(body, "Easy") {
+		t.Error("review page should show rating buttons")
+	}
+}
+
+func TestUI_Review_ActionAdvancesQueue(t *testing.T) {
+	srv, db := setupTestServer(t)
+
+	srv.db.Create(&models.Source{ID: "test-src", Type: "readeck", Name: "Test"})
+	srv.db.Create(&models.Document{
+		ID: "doc-1", SourceID: "test-src", SourceDocumentID: "a1",
+		Type: "article", Title: "A useful article", Author: "Murat",
+		Tags: models.JSONStringArray{}, Metadata: models.JSONMap{},
+	})
+	srv.db.Create(&models.Highlight{ID: "hl-1", DocumentID: "doc-1", SourceHighlightID: "h1", Text: "First idea"})
+	srv.db.Create(&models.Highlight{ID: "hl-2", DocumentID: "doc-1", SourceHighlightID: "h2", Text: "Second idea"})
+
+	rr := doUIPost(srv, "/review/hl-1", url.Values{"rating": {"good"}})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "Review saved") {
+		t.Error("expected review action confirmation")
+	}
+	if strings.Contains(body, "First idea") {
+		t.Error("scheduled highlight should leave the due queue")
+	}
+	if !strings.Contains(body, "Second idea") {
+		t.Error("next due highlight should be shown")
+	}
+
+	var state models.ReviewState
+	if err := db.First(&state, "highlight_id = ?", "hl-1").Error; err != nil {
+		t.Fatalf("expected review state: %v", err)
+	}
+	if state.IntervalDays != 1 {
+		t.Errorf("expected interval 1, got %d", state.IntervalDays)
 	}
 }
 
