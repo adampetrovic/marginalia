@@ -3,3 +3,4 @@
 *.db-wal
 /marginalia
 /service/marginalia
+.claude/
