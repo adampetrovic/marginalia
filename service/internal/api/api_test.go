@@ -394,3 +394,40 @@ func TestReadwiseAuth(t *testing.T) {
 		t.Errorf("expected 200, got %d", rr.Code)
 	}
 }
+
+// Readest uses a custom base URL of ".../api/v2" and appends "/auth/" and
+// "/highlights/" with a trailing slash, so both forms must be accepted.
+func TestReadwiseEndpoints_TrailingSlash(t *testing.T) {
+	srv, db := setupTestServer(t)
+
+	rr := doRequest(srv, "GET", "/api/v2/auth/", nil, testToken)
+	if rr.Code != http.StatusOK {
+		t.Errorf("auth: expected 200, got %d", rr.Code)
+	}
+
+	body := map[string]interface{}{
+		"highlights": []map[string]interface{}{
+			{
+				"text":           "Reading on an e-ink screen is calmer.",
+				"title":          "Deep Work",
+				"author":         "Cal Newport",
+				"source_type":    "readest",
+				"category":       "books",
+				"location":       12,
+				"location_type":  "order",
+				"highlighted_at": "2026-05-20T10:00:00Z",
+			},
+		},
+	}
+
+	rr = doRequest(srv, "POST", "/api/v2/highlights/", body, testToken)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("highlights: expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	var count int64
+	db.Model(&models.Highlight{}).Count(&count)
+	if count != 1 {
+		t.Errorf("expected 1 highlight, got %d", count)
+	}
+}
