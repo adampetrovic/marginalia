@@ -88,9 +88,16 @@ func (s *Server) buildRouter() chi.Router {
 			r.Get("/export/documents/{id}", s.handleExportDocument)
 		})
 
-		// Readwise-compatible endpoints (for KOReader) — kept at /api/v2 for compatibility
+		// Readwise-compatible endpoints for KOReader, Readest, and other
+		// Readwise clients — kept at /api/v2. Clients build the path
+		// differently: KOReader posts to ".../api/v2/highlights" (no trailing
+		// slash), while Readest uses a custom base URL of ".../api/v2" and
+		// appends "/highlights/" and "/auth/" with a trailing slash. Register
+		// both forms so either client works.
 		r.Post("/v2/highlights", s.handleReadwiseHighlights)
+		r.Post("/v2/highlights/", s.handleReadwiseHighlights)
 		r.Get("/v2/auth", s.handleReadwiseAuth)
+		r.Get("/v2/auth/", s.handleReadwiseAuth)
 	})
 
 	// Web UI (authenticated, served at root)

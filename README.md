@@ -11,8 +11,9 @@ syncs them into **Logseq** with fully customizable templates.
 ## Features
 
 - **Collect from anywhere** — pull article highlights from [Readeck](https://readeck.org)
-  and book highlights from [KOReader](https://koreader.rocks) (via a Readwise-compatible
-  endpoint, so any Readwise client works too).
+  and book highlights from [KOReader](https://koreader.rocks) and
+  [Readest](https://readest.com) (via a Readwise-compatible endpoint, so any Readwise
+  client works too).
 - **Browse & search** — a clean web UI to search titles, authors, and highlight text,
   filtered by books or articles.
 - **Daily review** — resurface highlights on a spaced-repetition schedule (Again / Hard /
@@ -43,6 +44,7 @@ The template editor renders a live preview against sample data as you type:
 
 ```
   KOReader  ──(Readwise API)──┐
+   Readest  ──(Readwise API)──┤
                               ▼
    Readeck  ──(pull sync)──> Marginalia ──> Logseq plugin ──> your graph
                               service
@@ -50,8 +52,9 @@ The template editor renders a live preview against sample data as you type:
                               SQLite / PostgreSQL
 ```
 
-- **KOReader** pushes highlights to Marginalia using a Readwise-compatible endpoint.
-- **Marginalia** pulls highlights from your Readeck instance on demand.
+- **KOReader** and **Readest** push book highlights to Marginalia using a
+  Readwise-compatible endpoint.
+- **Marginalia** pulls article highlights from your Readeck instance on demand.
 - The **Logseq plugin** pulls rendered pages from Marginalia into your graph.
 
 ## Self-hosting
@@ -158,6 +161,20 @@ Readwise exporter with a configurable server URL:
 3. Set the **server URL** to your Marginalia instance and the **authorization token** to
    your `MARGINALIA_API_TOKEN`.
 4. Enable **Export to Readwise**.
+
+### Readest (books)
+
+Recent versions of [Readest](https://readest.com) can send highlights to a custom
+Readwise-compatible endpoint ([readest#4114](https://github.com/readest/readest/issues/4114)).
+In Readest:
+
+1. Open **Settings → Integrations → Readwise** and connect.
+2. Expand the **Advanced** section and set the **Custom URL** to your Marginalia instance
+   with the `/api/v2` suffix, e.g. `https://marginalia.example.com/api/v2`.
+3. Use your `MARGINALIA_API_TOKEN` as the access token.
+
+Readest appends `/highlights/` and `/auth/` to the base URL (with a trailing slash);
+Marginalia accepts both that form and the no-trailing-slash form KOReader uses.
 
 ### Readeck (articles)
 
