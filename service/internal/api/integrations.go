@@ -19,9 +19,11 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 	s.db.Model(&models.Document{}).Where("user_id = ? AND type = ?", uid, "article").Count(&articles)
 	s.db.Model(&models.Highlight{}).Where("user_id = ?", uid).Count(&highlights)
 
+	// Due already includes new highlights awaiting their first review, so it is
+	// the full size of the review queue.
 	stats, err := s.reviewStats(uid, time.Now())
 	if err == nil {
-		due = stats.Due + stats.New
+		due = stats.Due
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{

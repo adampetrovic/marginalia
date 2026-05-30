@@ -319,6 +319,38 @@ func TestGetDocument_NotFound(t *testing.T) {
 	}
 }
 
+// TestStatsDueReviews guards against double-counting: a brand-new highlight is
+// both "new" and "due", so due_reviews must equal the number of highlights, not
+// twice that.
+func TestStatsDueReviews(t *testing.T) {
+	srv, db := setupTestServer(t)
+	db.Create(&models.Source{ID: "test-src", UserID: testUserID, Type: "koreader", Name: "Test"})
+	db.Create(&models.Document{ID: "doc-1", UserID: testUserID, SourceID: "test-src", SourceDocumentID: "d1", Type: "book", Title: "B", Tags: models.JSONStringArray{}, Metadata: models.JSONMap{}})
+	for _, id := range []string{"h1", "h2", "h3"} {
+		db.Create(&models.Highlight{ID: id, UserID: testUserID, DocumentID: "doc-1", SourceHighlightID: id, Text: "t"})
+	}
+
+	rr := doRequest(srv, "GET", "/api/v1/stats", nil, testToken)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	var stats struct {
+		Books      int64 `json:"books"`
+		Highlights int64 `json:"highlights"`
+		DueReviews int64 `json:"due_reviews"`
+	}
+	_ = json.NewDecoder(rr.Body).Decode(&stats)
+	if stats.Books != 1 {
+		t.Errorf("expected 1 book, got %d", stats.Books)
+	}
+	if stats.Highlights != 3 {
+		t.Errorf("expected 3 highlights, got %d", stats.Highlights)
+	}
+	if stats.DueReviews != 3 {
+		t.Errorf("expected 3 due reviews (not double-counted), got %d", stats.DueReviews)
+	}
+}
+
 // --- Review ---
 
 func TestReviewQueueIncludesNewHighlights(t *testing.T) {
