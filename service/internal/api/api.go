@@ -344,7 +344,9 @@ func (s *Server) handleCreateTemplate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	tmpl.ID = fmt.Sprintf("tmpl-%d", time.Now().UnixNano())
+	if tmpl.ID == "" {
+		tmpl.ID = fmt.Sprintf("tmpl-%d", time.Now().UnixNano())
+	}
 	tmpl.UserID = s.currentUser(r).ID
 	if err := s.db.Create(&tmpl).Error; err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())

@@ -13,7 +13,9 @@ import (
 
 func TestBootstrapRehomesLegacyData(t *testing.T) {
 	db, _ := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
-	models.AutoMigrate(db)
+	if err := models.AutoMigrate(db); err != nil {
+		t.Fatal(err)
+	}
 	// Pre-multi-user data: legacy singleton source + doc, no user_id.
 	db.Create(&models.Source{ID: "readeck", Type: "readeck", Name: "Readeck"})
 	db.Create(&models.Document{ID: "readeck-bm1", SourceID: "readeck", SourceDocumentID: "bm1", Type: "article", Title: "Old", Tags: models.JSONStringArray{}, Metadata: models.JSONMap{}})
