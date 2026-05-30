@@ -42,15 +42,7 @@ The template editor renders a live preview against sample data as you type:
 
 ## How it fits together
 
-```
-  KOReader  ──(Readwise API)──┐
-   Readest  ──(Readwise API)──┤
-                              ▼
-   Readeck  ──(pull sync)──> Marginalia ──> Logseq plugin ──> your graph
-                              service
-                                │
-                              SQLite / PostgreSQL
-```
+![Architecture](docs/architecture.svg)
 
 - **KOReader** and **Readest** push book highlights to Marginalia using a
   Readwise-compatible endpoint.
