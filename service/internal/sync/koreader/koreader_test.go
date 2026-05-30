@@ -26,7 +26,8 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 func TestIngest_SingleBook(t *testing.T) {
 	db := setupTestDB(t)
-	db.Create(&models.Source{ID: "koreader", Type: "koreader", Name: "KOReader"})
+	src := &models.Source{ID: "koreader", UserID: "u1", Type: "koreader", Name: "KOReader"}
+	db.Create(src)
 
 	req := ReadwiseHighlightRequest{
 		Highlights: []ReadwiseHighlight{
@@ -54,7 +55,7 @@ func TestIngest_SingleBook(t *testing.T) {
 		},
 	}
 
-	result, err := Ingest(db, "koreader", req)
+	result, err := Ingest(db, src, req)
 	if err != nil {
 		t.Fatalf("ingest error: %v", err)
 	}
@@ -86,7 +87,8 @@ func TestIngest_SingleBook(t *testing.T) {
 
 func TestIngest_MultipleBooks(t *testing.T) {
 	db := setupTestDB(t)
-	db.Create(&models.Source{ID: "koreader", Type: "koreader", Name: "KOReader"})
+	src := &models.Source{ID: "koreader", UserID: "u1", Type: "koreader", Name: "KOReader"}
+	db.Create(src)
 
 	req := ReadwiseHighlightRequest{
 		Highlights: []ReadwiseHighlight{
@@ -95,7 +97,7 @@ func TestIngest_MultipleBooks(t *testing.T) {
 		},
 	}
 
-	result, err := Ingest(db, "koreader", req)
+	result, err := Ingest(db, src, req)
 	if err != nil {
 		t.Fatalf("ingest error: %v", err)
 	}
@@ -113,7 +115,8 @@ func TestIngest_MultipleBooks(t *testing.T) {
 
 func TestIngest_Idempotent(t *testing.T) {
 	db := setupTestDB(t)
-	db.Create(&models.Source{ID: "koreader", Type: "koreader", Name: "KOReader"})
+	src := &models.Source{ID: "koreader", UserID: "u1", Type: "koreader", Name: "KOReader"}
+	db.Create(src)
 
 	req := ReadwiseHighlightRequest{
 		Highlights: []ReadwiseHighlight{
@@ -121,8 +124,8 @@ func TestIngest_Idempotent(t *testing.T) {
 		},
 	}
 
-	_, _ = Ingest(db, "koreader", req)
-	_, _ = Ingest(db, "koreader", req)
+	_, _ = Ingest(db, src, req)
+	_, _ = Ingest(db, src, req)
 
 	var docCount, hlCount int64
 	db.Model(&models.Document{}).Count(&docCount)
@@ -138,7 +141,8 @@ func TestIngest_Idempotent(t *testing.T) {
 
 func TestIngest_UpdatesNoteOnResubmit(t *testing.T) {
 	db := setupTestDB(t)
-	db.Create(&models.Source{ID: "koreader", Type: "koreader", Name: "KOReader"})
+	src := &models.Source{ID: "koreader", UserID: "u1", Type: "koreader", Name: "KOReader"}
+	db.Create(src)
 
 	// Same text + location = same highlight, but note changes
 	req1 := ReadwiseHighlightRequest{
@@ -146,14 +150,14 @@ func TestIngest_UpdatesNoteOnResubmit(t *testing.T) {
 			{Text: "Same text", Title: "Book", Author: "Author", Location: 1, LocationType: "order"},
 		},
 	}
-	_, _ = Ingest(db, "koreader", req1)
+	_, _ = Ingest(db, src, req1)
 
 	req2 := ReadwiseHighlightRequest{
 		Highlights: []ReadwiseHighlight{
 			{Text: "Same text", Title: "Book", Author: "Author", Note: "Added a note", Location: 1, LocationType: "order"},
 		},
 	}
-	_, _ = Ingest(db, "koreader", req2)
+	_, _ = Ingest(db, src, req2)
 
 	var count int64
 	db.Model(&models.Highlight{}).Count(&count)
@@ -170,7 +174,8 @@ func TestIngest_UpdatesNoteOnResubmit(t *testing.T) {
 
 func TestIngest_ConcatGroupGrows(t *testing.T) {
 	db := setupTestDB(t)
-	db.Create(&models.Source{ID: "koreader", Type: "koreader", Name: "KOReader"})
+	src := &models.Source{ID: "koreader", UserID: "u1", Type: "koreader", Name: "KOReader"}
+	db.Create(src)
 
 	// First ingest: two highlights in concat group 1
 	req1 := ReadwiseHighlightRequest{
@@ -180,7 +185,7 @@ func TestIngest_ConcatGroupGrows(t *testing.T) {
 			{Text: "Unrelated", Title: "Book", Author: "Author", Location: 20, LocationType: "order"},
 		},
 	}
-	_, err := Ingest(db, "koreader", req1)
+	_, err := Ingest(db, src, req1)
 	if err != nil {
 		t.Fatalf("first ingest: %v", err)
 	}
@@ -206,7 +211,7 @@ func TestIngest_ConcatGroupGrows(t *testing.T) {
 			{Text: "Unrelated", Title: "Book", Author: "Author", Location: 20, LocationType: "order"},
 		},
 	}
-	_, err = Ingest(db, "koreader", req2)
+	_, err = Ingest(db, src, req2)
 	if err != nil {
 		t.Fatalf("second ingest: %v", err)
 	}
@@ -232,7 +237,8 @@ func TestIngest_ConcatGroupGrows(t *testing.T) {
 
 func TestIngest_HeadingStored(t *testing.T) {
 	db := setupTestDB(t)
-	db.Create(&models.Source{ID: "koreader", Type: "koreader", Name: "KOReader"})
+	src := &models.Source{ID: "koreader", UserID: "u1", Type: "koreader", Name: "KOReader"}
+	db.Create(src)
 
 	req := ReadwiseHighlightRequest{
 		Highlights: []ReadwiseHighlight{
@@ -240,7 +246,7 @@ func TestIngest_HeadingStored(t *testing.T) {
 			{Text: "Normal highlight", Title: "Book", Author: "Author", Location: 5, LocationType: "order"},
 		},
 	}
-	_, err := Ingest(db, "koreader", req)
+	_, err := Ingest(db, src, req)
 	if err != nil {
 		t.Fatalf("ingest: %v", err)
 	}

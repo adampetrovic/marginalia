@@ -9,7 +9,6 @@ import (
 	"github.com/adampetrovic/marginalia/service/internal/api"
 	"github.com/adampetrovic/marginalia/service/internal/config"
 	"github.com/adampetrovic/marginalia/service/internal/models"
-	"github.com/adampetrovic/marginalia/service/internal/sync/readeck"
 )
 
 func main() {
@@ -33,13 +32,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Ensure sources exist for configured integrations
-	if cfg.IsReadeckConfigured() {
-		if _, err := readeck.EnsureSource(db); err != nil {
-			logger.Error("failed to ensure readeck source", "error", err)
-			os.Exit(1)
-		}
-		logger.Info("readeck source configured", "url", cfg.ReadeckURL)
+	// Initialise the first admin account and adopt any legacy single-user data.
+	if err := api.Bootstrap(db, cfg, logger); err != nil {
+		logger.Error("failed to bootstrap", "error", err)
+		os.Exit(1)
 	}
 
 	srv := api.NewServer(cfg, db, logger)

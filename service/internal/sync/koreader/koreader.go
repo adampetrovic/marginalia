@@ -20,15 +20,15 @@ type ReadwiseHighlightRequest struct {
 
 // ReadwiseHighlight is a single highlight in Readwise API format.
 type ReadwiseHighlight struct {
-	Text          string  `json:"text"`
-	Title         string  `json:"title"`
-	Author        string  `json:"author"`
-	SourceType    string  `json:"source_type"`
-	Category      string  `json:"category"`
-	Note          string  `json:"note"`
-	Location      int     `json:"location"`
-	LocationType  string  `json:"location_type"`
-	HighlightedAt string  `json:"highlighted_at"` // ISO 8601
+	Text          string `json:"text"`
+	Title         string `json:"title"`
+	Author        string `json:"author"`
+	SourceType    string `json:"source_type"`
+	Category      string `json:"category"`
+	Note          string `json:"note"`
+	Location      int    `json:"location"`
+	LocationType  string `json:"location_type"`
+	HighlightedAt string `json:"highlighted_at"` // ISO 8601
 }
 
 // IngestResult holds the outcome of processing a KOReader push.
@@ -37,9 +37,12 @@ type IngestResult struct {
 	HighlightsSynced int
 }
 
-// Ingest processes a Readwise-format highlight push from KOReader.
-func Ingest(db *gorm.DB, sourceID string, req ReadwiseHighlightRequest) (*IngestResult, error) {
+// Ingest processes a Readwise-format highlight push from KOReader into the
+// given user's source.
+func Ingest(db *gorm.DB, src *models.Source, req ReadwiseHighlightRequest) (*IngestResult, error) {
 	result := &IngestResult{}
+	sourceID := src.ID
+	userID := src.UserID
 
 	// Group highlights by book (title + author)
 	type bookKey struct {
@@ -57,7 +60,8 @@ func Ingest(db *gorm.DB, sourceID string, req ReadwiseHighlightRequest) (*Ingest
 		docSourceID := fmt.Sprintf("%s:%s", key.title, key.author)
 
 		doc := models.Document{
-			ID:               fmt.Sprintf("koreader-%s", sanitizeID(docSourceID)),
+			ID:               fmt.Sprintf("%s-%s", sourceID, sanitizeID(docSourceID)),
+			UserID:           userID,
 			SourceID:         sourceID,
 			SourceDocumentID: docSourceID,
 			Type:             "book",
@@ -96,6 +100,7 @@ func Ingest(db *gorm.DB, sourceID string, req ReadwiseHighlightRequest) (*Ingest
 
 			highlight := models.Highlight{
 				ID:                fmt.Sprintf("%s-%s", doc.ID, sanitizeID(sourceHLID)),
+				UserID:            userID,
 				DocumentID:        doc.ID,
 				SourceHighlightID: sourceHLID,
 				Text:              ph.Text,
@@ -108,10 +113,7 @@ func Ingest(db *gorm.DB, sourceID string, req ReadwiseHighlightRequest) (*Ingest
 				SyncedAt:          time.Now(),
 			}
 
-			if err := db.Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "document_id"}, {Name: "source_highlight_id"}},
-				DoUpdates: clause.AssignmentColumns([]string{"text", "note", "tags", "synced_at", "updated_at"}),
-			}).Create(&highlight).Error; err != nil {
+			if err := models.UpsertHighlight(db, &highlight, []string{"text", "note", "tags", "synced_at", "updated_at"}); err != nil {
 				return nil, fmt.Errorf("upserting highlight: %w", err)
 			}
 			result.HighlightsSynced++
@@ -129,15 +131,17 @@ func Ingest(db *gorm.DB, sourceID string, req ReadwiseHighlightRequest) (*Ingest
 	return result, nil
 }
 
-// EnsureSource creates or returns the KOReader source record.
-func EnsureSource(db *gorm.DB) (*models.Source, error) {
+// EnsureSource creates or returns the KOReader source record for a user.
+func EnsureSource(db *gorm.DB, userID string) (*models.Source, error) {
+	id := fmt.Sprintf("koreader-%s", userID)
 	src := models.Source{
-		ID:   "koreader",
-		Type: sourceType,
-		Name: "KOReader",
+		ID:     id,
+		UserID: userID,
+		Type:   sourceType,
+		Name:   "KOReader",
 	}
 
-	result := db.Where("id = ?", src.ID).FirstOrCreate(&src)
+	result := db.Where("id = ?", id).FirstOrCreate(&src)
 	if result.Error != nil {
 		return nil, fmt.Errorf("ensuring source: %w", result.Error)
 	}
@@ -167,5 +171,3 @@ func sanitizeID(s string) string {
 	}
 	return result
 }
-
-

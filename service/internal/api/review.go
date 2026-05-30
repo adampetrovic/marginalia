@@ -16,23 +16,9 @@ import (
 const defaultEaseFactor = 2.5
 
 type reviewQueueStats struct {
-	DueCount      int64 `json:"due_count"`
-	NewCount      int64 `json:"new_count"`
+	Due           int64 `json:"due"`
+	New           int64 `json:"new"`
 	ReviewedToday int64 `json:"reviewed_today"`
-}
-
-type reviewCardData struct {
-	Highlight  *models.Highlight
-	State      *models.ReviewState
-	Stats      reviewQueueStats
-	LastAction string
-	Error      string
-}
-
-type reviewResponse struct {
-	Stats     reviewQueueStats    `json:"stats"`
-	Highlight *models.Highlight   `json:"highlight,omitempty"`
-	State     *models.ReviewState `json:"state,omitempty"`
 }
 
 type reviewActionRequest struct {
@@ -42,22 +28,16 @@ type reviewActionRequest struct {
 // --- Review API ---
 
 func (s *Server) handleGetReview(w http.ResponseWriter, r *http.Request) {
-	now := time.Now()
-	highlight, state, err := s.nextDueReview(now)
+	card, err := s.reviewCard(s.currentUser(r).ID, time.Now())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	stats, err := s.reviewStats(now)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	writeJSON(w, http.StatusOK, reviewResponse{Stats: stats, Highlight: highlight, State: state})
+	writeJSON(w, http.StatusOK, card)
 }
 
 func (s *Server) handleReviewAction(w http.ResponseWriter, r *http.Request) {
+	userID := s.currentUser(r).ID
 	highlightID := chi.URLParam(r, "id")
 	var req reviewActionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -65,8 +45,7 @@ func (s *Server) handleReviewAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	state, err := s.applyReviewAction(highlightID, req.Rating, time.Now())
-	if err != nil {
+	if _, err := s.applyReviewAction(userID, highlightID, req.Rating, time.Now()); err != nil {
 		status := http.StatusBadRequest
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			status = http.StatusNotFound
@@ -75,14 +54,45 @@ func (s *Server) handleReviewAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, state)
+	// Return the next due card so the client can advance immediately.
+	card, err := s.reviewCard(userID, time.Now())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, card)
 }
 
 // --- Review scheduling ---
 
-func (s *Server) nextDueReview(now time.Time) (*models.Highlight, *models.ReviewState, error) {
+// reviewCard assembles the next-due-card response for a user: either the next
+// highlight with its document and review state, or {"done": true} when the
+// queue is empty. Either way it carries the current queue stats.
+func (s *Server) reviewCard(userID string, now time.Time) (map[string]interface{}, error) {
+	highlight, state, err := s.nextDueReview(userID, now)
+	if err != nil {
+		return nil, err
+	}
+	stats, err := s.reviewStats(userID, now)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := map[string]interface{}{"stats": stats}
+	if highlight == nil {
+		resp["done"] = true
+		return resp, nil
+	}
+	resp["done"] = false
+	resp["highlight"] = highlight
+	resp["state"] = state
+	resp["document"] = highlight.Document
+	return resp, nil
+}
+
+func (s *Server) nextDueReview(userID string, now time.Time) (*models.Highlight, *models.ReviewState, error) {
 	var highlight models.Highlight
-	err := s.dueReviewQuery(now).
+	err := s.dueReviewQuery(userID, now).
 		Preload("Document").
 		Preload("ReviewState").
 		Order("COALESCE(review_states.due_at, highlights.created_at) ASC").
@@ -98,21 +108,21 @@ func (s *Server) nextDueReview(now time.Time) (*models.Highlight, *models.Review
 	return &highlight, highlight.ReviewState, nil
 }
 
-func (s *Server) reviewStats(now time.Time) (reviewQueueStats, error) {
+func (s *Server) reviewStats(userID string, now time.Time) (reviewQueueStats, error) {
 	var stats reviewQueueStats
-	if err := s.dueReviewQuery(now).Count(&stats.DueCount).Error; err != nil {
+	if err := s.dueReviewQuery(userID, now).Count(&stats.Due).Error; err != nil {
 		return stats, err
 	}
 	if err := s.db.Model(&models.Highlight{}).
 		Joins("LEFT JOIN review_states ON review_states.highlight_id = highlights.id").
-		Where("review_states.highlight_id IS NULL").
-		Count(&stats.NewCount).Error; err != nil {
+		Where("highlights.user_id = ? AND review_states.highlight_id IS NULL", userID).
+		Count(&stats.New).Error; err != nil {
 		return stats, err
 	}
 
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	if err := s.db.Model(&models.ReviewState{}).
-		Where("last_reviewed_at >= ?", startOfDay).
+		Where("user_id = ? AND last_reviewed_at >= ?", userID, startOfDay).
 		Count(&stats.ReviewedToday).Error; err != nil {
 		return stats, err
 	}
@@ -120,26 +130,27 @@ func (s *Server) reviewStats(now time.Time) (reviewQueueStats, error) {
 	return stats, nil
 }
 
-func (s *Server) dueReviewQuery(now time.Time) *gorm.DB {
+func (s *Server) dueReviewQuery(userID string, now time.Time) *gorm.DB {
 	return s.db.Model(&models.Highlight{}).
 		Joins("LEFT JOIN review_states ON review_states.highlight_id = highlights.id").
+		Where("highlights.user_id = ?", userID).
 		Where("review_states.highlight_id IS NULL OR (review_states.suspended = ? AND review_states.due_at <= ?)", false, now)
 }
 
-func (s *Server) applyReviewAction(highlightID, rating string, now time.Time) (*models.ReviewState, error) {
+func (s *Server) applyReviewAction(userID, highlightID, rating string, now time.Time) (*models.ReviewState, error) {
 	if rating == "" {
 		return nil, errors.New("rating is required")
 	}
 
 	var highlight models.Highlight
-	if err := s.db.First(&highlight, "id = ?", highlightID).Error; err != nil {
+	if err := s.db.First(&highlight, "id = ? AND user_id = ?", highlightID, userID).Error; err != nil {
 		return nil, err
 	}
 
 	var state models.ReviewState
 	err := s.db.First(&state, "highlight_id = ?", highlightID).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		state = models.ReviewState{HighlightID: highlightID, EaseFactor: defaultEaseFactor}
+		state = models.ReviewState{HighlightID: highlightID, UserID: userID, EaseFactor: defaultEaseFactor}
 	} else if err != nil {
 		return nil, err
 	}

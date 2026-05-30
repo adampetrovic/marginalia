@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 )
@@ -15,10 +14,25 @@ type Config struct {
 	// Port is the HTTP listen port. Default: 8080
 	Port int
 
-	// APIToken is the bearer token required for API authentication.
+	// SessionSecret signs web-UI session cookies. If unset, a random secret is
+	// generated at startup (sessions then reset on every restart).
+	SessionSecret string
+
+	// DisableRegistration turns off public sign-up; accounts must be created by
+	// an existing admin.
+	DisableRegistration bool
+
+	// Bootstrap admin account, created on first run when no users exist.
+	AdminEmail    string
+	AdminPassword string
+
+	// APIToken is a legacy single shared bearer token. When set on first run it
+	// is migrated into a named API token belonging to the bootstrap admin so
+	// existing KOReader/Readest devices keep working. Optional.
 	APIToken string
 
-	// Readeck source configuration.
+	// Readeck source configuration. Used to seed the bootstrap admin's Readeck
+	// integration; per-user config is stored in the database thereafter.
 	ReadeckURL   string
 	ReadeckToken string
 }
@@ -26,15 +40,15 @@ type Config struct {
 // Load reads configuration from environment variables.
 func Load() (*Config, error) {
 	c := &Config{
-		DatabaseURL: envOrDefault("DATABASE_URL", "./marginalia.db"),
-		Port:        envIntOrDefault("MARGINALIA_PORT", 8080),
-		APIToken:    os.Getenv("MARGINALIA_API_TOKEN"),
-		ReadeckURL:  os.Getenv("MARGINALIA_READECK_URL"),
-		ReadeckToken: os.Getenv("MARGINALIA_READECK_TOKEN"),
-	}
-
-	if c.APIToken == "" {
-		return nil, fmt.Errorf("MARGINALIA_API_TOKEN is required")
+		DatabaseURL:         envOrDefault("DATABASE_URL", "./marginalia.db"),
+		Port:                envIntOrDefault("MARGINALIA_PORT", 8080),
+		SessionSecret:       os.Getenv("MARGINALIA_SESSION_SECRET"),
+		DisableRegistration: os.Getenv("MARGINALIA_DISABLE_REGISTRATION") != "",
+		AdminEmail:          os.Getenv("MARGINALIA_ADMIN_EMAIL"),
+		AdminPassword:       os.Getenv("MARGINALIA_ADMIN_PASSWORD"),
+		APIToken:            os.Getenv("MARGINALIA_API_TOKEN"),
+		ReadeckURL:          os.Getenv("MARGINALIA_READECK_URL"),
+		ReadeckToken:        os.Getenv("MARGINALIA_READECK_TOKEN"),
 	}
 
 	return c, nil
