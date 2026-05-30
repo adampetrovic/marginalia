@@ -140,9 +140,12 @@ func NewSyncer(client *Client, db *gorm.DB) *Syncer {
 	return &Syncer{client: client, db: db}
 }
 
-// Sync fetches bookmarks and annotations from Readeck and stores them.
-func (s *Syncer) Sync(sourceID string) (*SyncResult, error) {
+// Sync fetches bookmarks and annotations from Readeck and stores them into the
+// given user's source.
+func (s *Syncer) Sync(src *models.Source) (*SyncResult, error) {
 	result := &SyncResult{}
+	sourceID := src.ID
+	userID := src.UserID
 
 	bookmarks, err := s.client.GetBookmarks()
 	if err != nil {
@@ -173,7 +176,8 @@ func (s *Syncer) Sync(sourceID string) (*SyncResult, error) {
 		}
 
 		doc := models.Document{
-			ID:               fmt.Sprintf("readeck-%s", bm.ID),
+			ID:               fmt.Sprintf("%s-%s", sourceID, bm.ID),
+			UserID:           userID,
 			SourceID:         sourceID,
 			SourceDocumentID: bm.ID,
 			Type:             "article",
@@ -206,7 +210,8 @@ func (s *Syncer) Sync(sourceID string) (*SyncResult, error) {
 			}
 
 			hl := models.Highlight{
-				ID:                fmt.Sprintf("readeck-%s-%s", bm.ID, ann.ID),
+				ID:                fmt.Sprintf("%s-%s-%s", sourceID, bm.ID, ann.ID),
+				UserID:            userID,
 				DocumentID:        doc.ID,
 				SourceHighlightID: ann.ID,
 				Text:              ann.Text,
@@ -214,10 +219,7 @@ func (s *Syncer) Sync(sourceID string) (*SyncResult, error) {
 				SyncedAt:          time.Now(),
 			}
 
-			if err := s.db.Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "document_id"}, {Name: "source_highlight_id"}},
-				DoUpdates: clause.AssignmentColumns([]string{"text", "synced_at", "updated_at"}),
-			}).Create(&hl).Error; err != nil {
+			if err := models.UpsertHighlight(s.db, &hl, []string{"text", "synced_at", "updated_at"}); err != nil {
 				return nil, fmt.Errorf("upserting highlight %s: %w", ann.ID, err)
 			}
 			result.HighlightsSynced++
@@ -236,19 +238,19 @@ func (s *Syncer) Sync(sourceID string) (*SyncResult, error) {
 	return result, nil
 }
 
-// EnsureSource creates or returns the Readeck source record.
-func EnsureSource(db *gorm.DB) (*models.Source, error) {
+// EnsureSource creates or returns the Readeck source record for a user.
+func EnsureSource(db *gorm.DB, userID string) (*models.Source, error) {
+	id := fmt.Sprintf("readeck-%s", userID)
 	src := models.Source{
-		ID:   "readeck",
-		Type: sourceType,
-		Name: "Readeck",
+		ID:     id,
+		UserID: userID,
+		Type:   sourceType,
+		Name:   "Readeck",
 	}
 
-	result := db.Where("id = ?", src.ID).FirstOrCreate(&src)
+	result := db.Where("id = ?", id).FirstOrCreate(&src)
 	if result.Error != nil {
 		return nil, fmt.Errorf("ensuring source: %w", result.Error)
 	}
 	return &src, nil
 }
-
-

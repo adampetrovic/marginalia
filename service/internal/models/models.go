@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // JSONStringArray is a []string that serializes to JSON in the database.
@@ -65,10 +67,13 @@ func (j *JSONMap) Scan(value interface{}) error {
 }
 
 // Source represents a configured highlight input source (e.g. readeck, koreader).
+// Sources are per-user: each user has their own readeck/koreader source records.
 type Source struct {
 	ID           string     `gorm:"primaryKey" json:"id"`
+	UserID       string     `gorm:"not null;index" json:"user_id"`
 	Type         string     `gorm:"not null" json:"type"` // readeck, koreader
 	Name         string     `gorm:"not null" json:"name"`
+	Config       JSONMap    `gorm:"type:text" json:"-"` // per-source settings (e.g. readeck url/token)
 	LastSyncedAt *time.Time `json:"last_synced_at"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
@@ -80,6 +85,7 @@ type Source struct {
 // Document represents a book, article, podcast, or tweet.
 type Document struct {
 	ID                string          `gorm:"primaryKey" json:"id"`
+	UserID            string          `gorm:"not null;index" json:"user_id"`
 	SourceID          string          `gorm:"not null;index;uniqueIndex:idx_source_doc" json:"source_id"`
 	SourceDocumentID  string          `gorm:"not null;uniqueIndex:idx_source_doc" json:"source_document_id"`
 	Type              string          `gorm:"not null;index" json:"type"` // book, article, podcast, tweet
@@ -91,10 +97,12 @@ type Document struct {
 	Category          string          `json:"category"`
 	Tags              JSONStringArray `gorm:"type:text" json:"tags"`
 	Metadata          JSONMap         `gorm:"type:text" json:"metadata"`
+	Favorite          bool            `gorm:"not null;default:false;index" json:"favorite"`
 	LastHighlightedAt *time.Time      `json:"last_highlighted_at"`
 	LastSyncedAt      *time.Time      `json:"last_synced_at"`
 	CreatedAt         time.Time       `gorm:"index" json:"created_at"`
 	UpdatedAt         time.Time       `gorm:"index" json:"updated_at"`
+	DeletedAt         gorm.DeletedAt  `gorm:"index" json:"-"`
 
 	Source     Source      `gorm:"foreignKey:SourceID" json:"-"`
 	Highlights []Highlight `gorm:"foreignKey:DocumentID" json:"highlights,omitempty"`
@@ -103,12 +111,15 @@ type Document struct {
 // Highlight represents an individual highlight/annotation within a document.
 type Highlight struct {
 	ID                string          `gorm:"primaryKey" json:"id"`
+	UserID            string          `gorm:"not null;index" json:"user_id"`
 	DocumentID        string          `gorm:"not null;index;uniqueIndex:idx_doc_hl" json:"document_id"`
 	SourceHighlightID string          `gorm:"not null;uniqueIndex:idx_doc_hl" json:"source_highlight_id"`
 	Text              string          `gorm:"not null" json:"text"`
 	Note              string          `json:"note"`
 	Color             string          `json:"color"`
 	Tags              JSONStringArray `gorm:"type:text" json:"tags"`
+	Favorite          bool            `gorm:"not null;default:false;index" json:"favorite"`
+	UserEdited        bool            `gorm:"not null;default:false" json:"user_edited"`
 	Location          string          `json:"location"`
 	LocationType      string          `json:"location_type"` // page, order, time_offset
 	LocationSortKey   float64         `gorm:"default:0" json:"location_sort_key"`
@@ -119,6 +130,7 @@ type Highlight struct {
 	SyncedAt          time.Time       `json:"synced_at"`
 	CreatedAt         time.Time       `json:"created_at"`
 	UpdatedAt         time.Time       `json:"updated_at"`
+	DeletedAt         gorm.DeletedAt  `gorm:"index" json:"-"`
 
 	Document    Document     `gorm:"foreignKey:DocumentID" json:"-"`
 	ReviewState *ReviewState `gorm:"foreignKey:HighlightID" json:"review_state,omitempty"`
@@ -127,6 +139,7 @@ type Highlight struct {
 // ReviewState tracks spaced-repetition scheduling for a highlight.
 type ReviewState struct {
 	HighlightID    string     `gorm:"primaryKey" json:"highlight_id"`
+	UserID         string     `gorm:"not null;index" json:"user_id"`
 	EaseFactor     float64    `gorm:"not null;default:2.5" json:"ease_factor"`
 	IntervalDays   int        `gorm:"not null;default:0" json:"interval_days"`
 	Repetitions    int        `gorm:"not null;default:0" json:"repetitions"`
@@ -145,6 +158,7 @@ type ReviewState struct {
 // Template stores rendering templates for export.
 type Template struct {
 	ID                string    `gorm:"primaryKey" json:"id"`
+	UserID            string    `gorm:"not null;index" json:"user_id"`
 	Name              string    `gorm:"not null" json:"name"`
 	Type              string    `gorm:"not null" json:"type"` // book, article, podcast, tweet
 	PageTemplate      string    `gorm:"not null" json:"page_template"`
@@ -157,6 +171,7 @@ type Template struct {
 // SyncLog records the result of a sync operation.
 type SyncLog struct {
 	ID               uint       `gorm:"primaryKey;autoIncrement" json:"id"`
+	UserID           string     `gorm:"not null;index" json:"user_id"`
 	SourceID         string     `gorm:"not null;index" json:"source_id"`
 	Status           string     `gorm:"not null" json:"status"` // started, completed, failed
 	DocumentsSynced  int        `gorm:"default:0" json:"documents_synced"`

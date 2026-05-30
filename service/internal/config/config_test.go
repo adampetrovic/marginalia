@@ -4,11 +4,12 @@ import (
 	"testing"
 )
 
-func TestLoad_RequiresAPIToken(t *testing.T) {
+func TestLoad_NoTokenRequired(t *testing.T) {
 	clearEnv(t)
-	_, err := Load()
-	if err == nil {
-		t.Fatal("expected error when MARGINALIA_API_TOKEN is not set")
+	// Multi-user auth means the legacy shared token is optional; Load must
+	// succeed without it.
+	if _, err := Load(); err != nil {
+		t.Fatalf("expected no error without MARGINALIA_API_TOKEN, got %v", err)
 	}
 }
 

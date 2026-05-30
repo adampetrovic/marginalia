@@ -133,12 +133,13 @@ func TestSyncer_Sync(t *testing.T) {
 	defer srv.Close()
 
 	db := setupTestDB(t)
-	db.Create(&models.Source{ID: "readeck", Type: "readeck", Name: "Readeck"})
+	src := &models.Source{ID: "readeck", UserID: "u1", Type: "readeck", Name: "Readeck"}
+	db.Create(src)
 
 	client := NewClient(srv.URL, "test-token")
 	syncer := NewSyncer(client, db)
 
-	result, err := syncer.Sync("readeck")
+	result, err := syncer.Sync(src)
 	if err != nil {
 		t.Fatalf("sync error: %v", err)
 	}
@@ -189,14 +190,15 @@ func TestSyncer_Sync_Idempotent(t *testing.T) {
 	defer srv.Close()
 
 	db := setupTestDB(t)
-	db.Create(&models.Source{ID: "readeck", Type: "readeck", Name: "Readeck"})
+	src := &models.Source{ID: "readeck", UserID: "u1", Type: "readeck", Name: "Readeck"}
+	db.Create(src)
 
 	client := NewClient(srv.URL, "test-token")
 	syncer := NewSyncer(client, db)
 
 	// Sync twice
-	_, _ = syncer.Sync("readeck")
-	_, _ = syncer.Sync("readeck")
+	_, _ = syncer.Sync(src)
+	_, _ = syncer.Sync(src)
 
 	// Should still only have 1 document and 1 highlight
 	var docCount, hlCount int64
@@ -233,13 +235,14 @@ func TestSyncer_Sync_UpdatesExisting(t *testing.T) {
 	defer srv.Close()
 
 	db := setupTestDB(t)
-	db.Create(&models.Source{ID: "readeck", Type: "readeck", Name: "Readeck"})
+	src := &models.Source{ID: "readeck", UserID: "u1", Type: "readeck", Name: "Readeck"}
+	db.Create(src)
 
 	client := NewClient(srv.URL, "test-token")
 	syncer := NewSyncer(client, db)
 
-	_, _ = syncer.Sync("readeck")
-	_, _ = syncer.Sync("readeck")
+	_, _ = syncer.Sync(src)
+	_, _ = syncer.Sync(src)
 
 	var doc models.Document
 	db.First(&doc, "source_document_id = ?", "bm1")
@@ -251,16 +254,16 @@ func TestSyncer_Sync_UpdatesExisting(t *testing.T) {
 func TestEnsureSource(t *testing.T) {
 	db := setupTestDB(t)
 
-	src, err := EnsureSource(db)
+	src, err := EnsureSource(db, "u1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if src.ID != "readeck" {
+	if src.ID != "readeck-u1" {
 		t.Errorf("unexpected source ID: %q", src.ID)
 	}
 
 	// Calling again should return the same source
-	src2, err := EnsureSource(db)
+	src2, err := EnsureSource(db, "u1")
 	if err != nil {
 		t.Fatalf("unexpected error on second call: %v", err)
 	}

@@ -109,7 +109,8 @@ SOURCES=$(api GET /api/v1/sources)
 SOURCE_COUNT=$(echo "$SOURCES" | jq 'length')
 assert_gt "at least one source configured" 0 "$SOURCE_COUNT"
 
-READECK_TYPE=$(echo "$SOURCES" | jq -r '.[] | select(.id == "readeck") | .type')
+# Sources are per-user now (id like "readeck-<uid>"); match on the stable type.
+READECK_TYPE=$(echo "$SOURCES" | jq -r '.[] | select(.type == "readeck") | .type')
 assert_eq "readeck source exists" "readeck" "$READECK_TYPE"
 
 # ── 4. Readeck sync ────────────────────────────────────────────────

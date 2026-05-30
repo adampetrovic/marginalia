@@ -42,12 +42,35 @@ func OpenDatabase(databaseURL string) (*gorm.DB, error) {
 // AutoMigrate runs GORM auto-migration for all models.
 // This is used for development and testing. Production uses goose migrations.
 func AutoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(
+	if err := db.AutoMigrate(
+		&User{},
+		&APIToken{},
 		&Source{},
 		&Document{},
 		&Highlight{},
 		&ReviewState{},
 		&Template{},
 		&SyncLog{},
-	)
+	); err != nil {
+		return err
+	}
+	return backfill(db)
+}
+
+// backfill runs idempotent data migrations after the schema is in place.
+func backfill(db *gorm.DB) error {
+	// Favorite was historically tracked on ReviewState. It is now a first-class
+	// field on Highlight. Copy any pre-existing favorites across. Safe to re-run:
+	// it only flips highlights that are not already favorited.
+	if db.Migrator().HasTable(&ReviewState{}) && db.Migrator().HasColumn(&ReviewState{}, "favorite") {
+		if err := db.Exec(`
+			UPDATE highlights
+			SET favorite = ?
+			WHERE favorite = ?
+			  AND id IN (SELECT highlight_id FROM review_states WHERE favorite = ?)
+		`, true, false, true).Error; err != nil {
+			return fmt.Errorf("backfilling highlight favorites: %w", err)
+		}
+	}
+	return nil
 }

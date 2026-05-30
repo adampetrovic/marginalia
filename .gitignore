@@ -4,3 +4,7 @@
 /marginalia
 /service/marginalia
 .claude/
+
+# Frontend (Vite app) — build deps and output live outside the Go module
+/frontend/node_modules/
+/frontend/dist/
